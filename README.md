@@ -71,7 +71,6 @@ rotation:=0
 | `CV2ColorTargetHint` | Converts target/reasoning text like `track red cube` into label and HSV settings for CV2 tracking |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
 | `CV2ColorObjectStream` | Starts live MJPEG overlay and mask streams from a camera snapshot URL and exposes current snapshot and detection JSON |
-| `CV2TrackerPythonExport` | Generates a standalone OpenCV tracker script for robot deployment experiments |
 
 ## Templates
 
@@ -187,9 +186,19 @@ track, then CV2 does the live low-latency tracking.
 `CV2ColorObjectStream` keeps overlay and mask previews live and exposes the
 latest mask stream at `/mask.mjpg`, mask snapshot at `/mask.png`, frame
 snapshot at `/snapshot.jpg`, and detection at `/detection.json`;
-`CV2ColorObjectTracker` is still useful for single-frame tests and exports.
-Both return structured detections, so the same prototype can drive a local LLM,
-robot control node, dashboard, or Python export.
+`CV2ColorObjectTracker` is still useful for single-frame tests. Both return
+structured detections, so the same prototype can drive a local LLM, robot
+control node, dashboard, or graph export.
+
+## Export
+
+Use the top-bar **Export** dropdown on the actual canvas graph. **Plain
+Python** exports the same nodes and edges you built visually, including ROS 2,
+camera, reasoning, and CV2 nodes. No special export node is required.
+
+The exported Python keeps Blacknode as the runtime layer. A later robot-deploy
+exporter can compile supported graph patterns into smaller standalone scripts,
+but it should still be an export target, not a node on the canvas.
 
 ## Development
 

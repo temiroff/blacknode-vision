@@ -14,7 +14,6 @@ EXPECTED_NODES = {
     "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
     "CV2HSVMask": "CV2",
-    "CV2TrackerPythonExport": "CV2",
     "VisionDetectionPrompt": "Vision",
     "VisionFramePrompt": "Vision",
     "VisionReasoningDashboard": "Vision",
@@ -430,18 +429,6 @@ def test_vision_reasoning_stream_stops_runtime(monkeypatch):
     result = fn({"action": "stop", "stream_id": "reason"})
     assert result["streaming"] is False
     assert "stopped 1 reasoning stream" in result["report"]
-
-
-def test_cv2_tracker_python_export_contains_config():
-    result = _NODE_REGISTRY["CV2TrackerPythonExport"]({
-        "label": "cube",
-        "lower_hsv": "35,60,60",
-        "upper_hsv": "85,255,255",
-        "camera_device": 1,
-    })
-    assert "CAMERA_DEVICE = 1" in result["source"]
-    assert "LOWER_HSV" in result["source"]
-
 
 def test_vlm_describe_requires_image():
     result = _NODE_REGISTRY["VisionVLMDescribe"]({"image": ""})
