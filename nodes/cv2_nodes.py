@@ -8,6 +8,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from . import cv2_runtime
+
 try:
     import cv2
     import numpy as np
@@ -18,7 +20,8 @@ except Exception as exc:  # pragma: no cover - exercised on machines without Ope
     np = None
     _CV2_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
 
-from blacknode.node import Bool, Dict, Float, Image, Int, List, Text, node
+from blacknode.node import Any as AnyPort
+from blacknode.node import Bool, Dict, Enum, Float, Image, Int, List, Text, node
 
 _CATEGORY = "CV2"
 
@@ -356,6 +359,117 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
         }
         if found
         else {"found": False, "label": label, "lower_hsv": lower, "upper_hsv": upper},
+        "detections": detections,
+        "report": report,
+    }
+
+
+@node(
+    name="CV2ColorObjectStream",
+    category=_CATEGORY,
+    description="Start or stop a live MJPEG stream with OpenCV color tracking overlay and detection JSON.",
+    inputs={
+        "trigger": AnyPort,
+        "action": Enum(["start", "stop"], default="start"),
+        "stream_id": Text(default="cube_tracker"),
+        "source_url": Text(default=""),
+        "label": Text(default="cube"),
+        "lower_hsv": Text(default="35,60,60"),
+        "upper_hsv": Text(default="85,255,255"),
+        "min_area": Int(default=300),
+        "max_detections": Int(default=3),
+        "blur": Int(default=5),
+        "morphology_iters": Int(default=1),
+        "host": Text(default="127.0.0.1"),
+        "port": Int(default=0),
+        "max_fps": Float(default=10.0),
+        "max_width": Int(default=960),
+        "jpeg_quality": Int(default=82),
+    },
+    outputs={
+        "preview": Image,
+        "snapshot": Image,
+        "streaming": Bool,
+        "stream_url": Text,
+        "snapshot_url": Text,
+        "detection_url": Text,
+        "stream_id": Text,
+        "found": Bool,
+        "detection": Dict,
+        "detections": List,
+        "report": Text,
+    },
+)
+def cv2_color_object_stream(ctx: dict) -> dict:
+    stream_id = str(ctx.get("stream_id") or "cube_tracker").strip() or "cube_tracker"
+    action = str(ctx.get("action") or "start").strip().lower()
+    empty = {
+        "preview": "",
+        "snapshot": "",
+        "streaming": False,
+        "stream_url": "",
+        "snapshot_url": "",
+        "detection_url": "",
+        "stream_id": stream_id,
+        "found": False,
+        "detection": {},
+        "detections": [],
+    }
+    if action == "stop":
+        result = cv2_runtime.stop_color_stream(stream_id)
+        return {**empty, "report": f"stopped {result.get('stopped', 0)} CV2 stream(s)"}
+
+    if cv2 is None or np is None:
+        return {**empty, "report": _missing_cv2_outputs()["report"]}
+
+    source_url = str(ctx.get("source_url") or "").strip()
+    if not source_url:
+        return {**empty, "report": "CV2 stream FAILED: connect source_url to a camera snapshot URL"}
+
+    label = str(ctx.get("label") or "object").strip() or "object"
+    lower_hsv = ",".join(str(value) for value in _parse_hsv(ctx.get("lower_hsv"), (35, 60, 60)))
+    upper_hsv = ",".join(str(value) for value in _parse_hsv(ctx.get("upper_hsv"), (85, 255, 255)))
+    host = str(ctx.get("host") or "127.0.0.1").strip() or "127.0.0.1"
+    result = cv2_runtime.start_color_stream(
+        stream_id=stream_id,
+        source_url=source_url,
+        label=label,
+        lower_hsv=lower_hsv,
+        upper_hsv=upper_hsv,
+        min_area=max(0, int(ctx.get("min_area") or 0)),
+        max_detections=max(1, int(ctx.get("max_detections") or 1)),
+        blur=max(0, int(ctx.get("blur") or 0)),
+        morphology_iters=max(0, int(ctx.get("morphology_iters") or 0)),
+        host=host,
+        port=max(0, int(ctx.get("port") or 0)),
+        max_fps=max(0.1, min(60.0, float(ctx.get("max_fps") or 10.0))),
+        max_width=max(0, int(ctx.get("max_width") or 960)),
+        jpeg_quality=max(1, min(100, int(ctx.get("jpeg_quality") or 82))),
+    )
+    if not result.get("ok"):
+        return {**empty, "report": f"CV2 stream FAILED: {result.get('error', 'unknown error')}"}
+
+    payload = result.get("detection") if isinstance(result.get("detection"), dict) else {}
+    detection = payload.get("detection") if isinstance(payload.get("detection"), dict) else {}
+    detections = payload.get("detections") if isinstance(payload.get("detections"), list) else []
+    found = bool(payload.get("found") or detection.get("found"))
+    stream_url = str(result.get("stream_url") or "")
+    snapshot_url = str(result.get("snapshot_url") or "")
+    detection_url = str(result.get("detection_url") or "")
+    report = (
+        f"LIVE CV2 STREAM running on {stream_url} from {source_url}; "
+        f"{str(payload.get('report') or 'waiting for detections')}"
+    )
+    return {
+        "preview": stream_url,
+        "snapshot": snapshot_url,
+        "streaming": True,
+        "stream_url": stream_url,
+        "snapshot_url": snapshot_url,
+        "detection_url": detection_url,
+        "stream_id": stream_id,
+        "found": found,
+        "detection": detection or {"found": False, "label": label},
         "detections": detections,
         "report": report,
     }

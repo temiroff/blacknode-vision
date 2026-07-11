@@ -90,7 +90,7 @@ def _default_model(provider: str, model: str) -> str:
     if provider == "anthropic":
         return "claude-sonnet-4-5"
     if provider == "ollama":
-        return "qwen2.5vl:7b"
+        return "qwen3-vl:4b"
     return _OPENAI_COMPATIBLE_DEFAULT_MODEL
 
 
@@ -385,6 +385,8 @@ def vision_vlm_describe(ctx: dict) -> dict:
             return {"text": text, "report": f"VLM describe OK via anthropic/{model}", "raw": payload}
 
         if provider == "ollama":
+            if "qwen3" in model.lower() and max_tokens < 4096:
+                max_tokens = 4096
             message: dict[str, Any] = {"role": "user", "content": question}
             if image:
                 _media_type, image_data, _source_kind = _image_data_parts(image)
@@ -407,8 +409,55 @@ def vision_vlm_describe(ctx: dict) -> dict:
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
             payload = _post_json(endpoint + "/api/chat", body, headers, timeout=180.0)
-            text = str((payload.get("message") or {}).get("content") or "").strip()
-            return {"text": text, "report": f"VLM describe OK via ollama/{model}", "raw": payload}
+
+            def extract_ollama_text(data: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+                message_data = data.get("message") if isinstance(data.get("message"), dict) else {}
+                content_data = message_data.get("content")
+                if isinstance(content_data, list):
+                    extracted = "\n".join(
+                        str(item.get("text", ""))
+                        for item in content_data
+                        if isinstance(item, dict)
+                    ).strip()
+                else:
+                    extracted = str(content_data or "").strip()
+                return extracted, message_data
+
+            if payload.get("error"):
+                return {"text": "", "report": f"VLM describe FAILED: ollama/{model}: {payload['error']}", "raw": payload}
+            text, message_payload = extract_ollama_text(payload)
+            retried_for_qwen3 = False
+            if (
+                not text
+                and "qwen3" in model.lower()
+                and str(payload.get("done_reason") or "").lower() == "length"
+                and max_tokens < 8192
+            ):
+                retry_body = {
+                    **body,
+                    "options": {
+                        **body["options"],
+                        "num_predict": 8192,
+                    },
+                }
+                payload = _post_json(endpoint + "/api/chat", retry_body, headers, timeout=240.0)
+                retried_for_qwen3 = True
+                if payload.get("error"):
+                    return {"text": "", "report": f"VLM describe FAILED: ollama/{model}: {payload['error']}", "raw": payload}
+                text, message_payload = extract_ollama_text(payload)
+            if not text:
+                message_keys = ", ".join(sorted(str(key) for key in message_payload)) or "none"
+                thinking_note = "; thinking field was present but is hidden" if message_payload.get("thinking") else ""
+                return {
+                    "text": "",
+                    "report": (
+                        f"VLM describe FAILED: ollama/{model} returned empty final content"
+                        f"{thinking_note}; message keys: {message_keys}"
+                    ),
+                    "raw": payload,
+                }
+            retry_note = " after Qwen3 length retry" if retried_for_qwen3 else ""
+            return {"text": text, "report": f"VLM describe OK via ollama/{model}{retry_note}", "raw": payload}
 
         if has_image and image_kind not in {"data-url", "url"}:
             media_type, image_data, _source_kind = _image_data_parts(image)

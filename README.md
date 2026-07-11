@@ -64,6 +64,7 @@ rotation:=0
 | `VisionReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
+| `CV2ColorObjectStream` | Starts a live MJPEG overlay stream from a camera snapshot URL and exposes current detection JSON |
 | `CV2TrackerPythonExport` | Generates a standalone OpenCV tracker script for robot deployment experiments |
 
 ## Templates
@@ -75,9 +76,10 @@ rotation:=0
 - **Blacknode Vision Live VLM Reasoning** — start the USB camera, keep the live
   stream visible, capture one frame, call the VLM, and render a reasoning
   dashboard beside the image.
-- **Blacknode Vision CV2 Cube Local Reasoning** — start the USB camera, track a
-  colored cube with OpenCV, reason over detection JSON with local Ollama/Qwen,
-  and generate a standalone Python tracker.
+- **Blacknode Vision CV2 Cube Local Reasoning** — start the USB camera, stream
+  the raw image, stream a live OpenCV cube-tracking overlay, reason over the
+  overlay snapshot and detection JSON with local Ollama/Qwen, and generate a
+  standalone Python tracker.
 
 For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
 auto-sources a ROS workspace when it finds exactly one `ros2_ws/install/setup.bash`.
@@ -123,8 +125,13 @@ Local Ollama defaults to:
 ```text
 provider: ollama
 endpoint_url: http://127.0.0.1:11434
-model: qwen2.5vl:7b
+model: qwen3-vl:4b
+max_tokens: 4096
 ```
+
+Qwen3 models can spend many tokens in Ollama's hidden thinking phase before
+returning final `content`, so `VisionVLMDescribe` automatically raises
+`num_predict` to at least `4096` for Qwen3 models.
 
 If your installed Ollama model is text-only, keep `allow_text_only` enabled and
 feed it a `VisionDetectionPrompt` from CV2 detections. If your model is a true
@@ -143,9 +150,11 @@ lower_hsv: 35,60,60
 upper_hsv: 85,255,255
 ```
 
-Change those values for red, blue, or other cube colors. `CV2ColorObjectTracker`
-returns structured detections, so the same prototype can drive a local LLM,
-robot control node, dashboard, or Python export.
+Change those values for red, blue, or other cube colors.
+`CV2ColorObjectStream` keeps an overlay preview live and exposes the latest
+detection at `/detection.json`; `CV2ColorObjectTracker` is still useful for
+single-frame tests and exports. Both return structured detections, so the same
+prototype can drive a local LLM, robot control node, dashboard, or Python export.
 
 ## Development
 

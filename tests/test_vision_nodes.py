@@ -10,6 +10,7 @@ from blacknode.workflow import validate_workflow
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 EXPECTED_NODES = {
+    "CV2ColorObjectStream": "CV2",
     "CV2ColorObjectTracker": "CV2",
     "CV2HSVMask": "CV2",
     "CV2TrackerPythonExport": "CV2",
@@ -139,6 +140,55 @@ def test_vlm_describe_ollama_text_only(monkeypatch):
     assert "images" not in calls[0]["body"]["messages"][-1]
 
 
+def test_vlm_describe_ollama_empty_content_reports_failure(monkeypatch):
+    calls = []
+
+    def fake_post_json(url, body, headers, timeout=90.0):
+        calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
+        return {"message": {"content": "", "thinking": "internal reasoning is hidden"}}
+
+    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
+    result = fn({
+        "image": "",
+        "question": "What next?",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
+        "allow_text_only": True,
+    })
+    assert result["text"] == ""
+    assert "empty final content" in result["report"]
+    assert "thinking field was present but is hidden" in result["report"]
+    assert "internal reasoning" not in result["report"]
+    assert calls[0]["body"]["options"]["num_predict"] == 4096
+
+
+def test_vlm_describe_ollama_retries_qwen3_length_stop(monkeypatch):
+    calls = []
+
+    def fake_post_json(url, body, headers, timeout=90.0):
+        calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
+        if len(calls) == 1:
+            return {"message": {"content": "", "thinking": "long hidden reasoning"}, "done_reason": "length"}
+        return {"message": {"content": "Cube centered at (320, 240)."}, "done_reason": "stop"}
+
+    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
+    result = fn({
+        "image": "",
+        "question": "Where is the cube?",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
+        "allow_text_only": True,
+        "max_tokens": 512,
+    })
+    assert result["text"] == "Cube centered at (320, 240)."
+    assert "length retry" in result["report"]
+    assert [call["body"]["options"]["num_predict"] for call in calls] == [4096, 8192]
+
+
 def test_vlm_describe_anthropic_image(monkeypatch):
     calls = []
 
@@ -191,6 +241,60 @@ def test_cv2_tracker_reports_missing_or_detects_green_cube():
     assert result["overlay"].startswith("data:image/jpeg;base64,")
 
 
+def test_cv2_color_object_stream_starts_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["CV2ColorObjectStream"]
+    if fn.__globals__["cv2"] is None:
+        result = fn({"source_url": "http://127.0.0.1:9000/snapshot.jpg"})
+        assert result["streaming"] is False
+        assert "OpenCV is not installed" in result["report"]
+        return
+
+    calls = []
+
+    def fake_start_color_stream(**kwargs):
+        calls.append(kwargs)
+        return {
+            "ok": True,
+            "stream_url": "http://127.0.0.1:9100/stream.mjpg",
+            "snapshot_url": "http://127.0.0.1:9100/snapshot.jpg",
+            "detection_url": "http://127.0.0.1:9100/detection.json",
+            "detection": {
+                "found": True,
+                "detection": {"found": True, "label": "cube", "center": {"x": 40, "y": 20}},
+                "detections": [{"label": "cube"}],
+                "report": "tracking cube: found 1 candidate(s)",
+            },
+        }
+
+    monkeypatch.setattr(fn.__globals__["cv2_runtime"], "start_color_stream", fake_start_color_stream)
+    result = fn({
+        "stream_id": "cube_tracker",
+        "source_url": "http://127.0.0.1:9000/snapshot.jpg",
+        "label": "cube",
+        "lower_hsv": "35,60,60",
+        "upper_hsv": "85,255,255",
+    })
+    assert result["streaming"] is True
+    assert result["preview"] == "http://127.0.0.1:9100/stream.mjpg"
+    assert result["found"] is True
+    assert result["detection"]["center"]["x"] == 40
+    assert calls[0]["source_url"] == "http://127.0.0.1:9000/snapshot.jpg"
+    assert calls[0]["stream_id"] == "cube_tracker"
+
+
+def test_cv2_color_object_stream_stops_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["CV2ColorObjectStream"]
+
+    def fake_stop_color_stream(stream_id):
+        assert stream_id == "cube_tracker"
+        return {"ok": True, "stopped": 1}
+
+    monkeypatch.setattr(fn.__globals__["cv2_runtime"], "stop_color_stream", fake_stop_color_stream)
+    result = fn({"action": "stop", "stream_id": "cube_tracker"})
+    assert result["streaming"] is False
+    assert "stopped 1 CV2 stream" in result["report"]
+
+
 def test_cv2_tracker_python_export_contains_config():
     result = _NODE_REGISTRY["CV2TrackerPythonExport"]({
         "label": "cube",
@@ -219,3 +323,18 @@ def test_vlm_describe_requires_key_for_remote(monkeypatch):
     })
     assert result["text"] == ""
     assert "api_key" in result["report"]
+
+
+def test_cube_template_uses_live_cv2_stream_and_qwen3():
+    path = TEMPLATE_DIR / "vision-cv2-cube-local-reasoning.json"
+    workflow = json.loads(path.read_text(encoding="utf-8"))
+    assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
+    assert workflow["node_meta"]["local_reason"]["params"]["model"] == "qwen3-vl:4b"
+    assert workflow["node_meta"]["local_reason"]["params"]["max_tokens"] == 4096
+    edges = {
+        (edge["from"], edge["from_port"], edge["to"], edge["to_port"])
+        for edge in workflow["edges"]
+    }
+    assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
+    assert ("cv2_stream", "preview", "overlay_out", "image") in edges
+    assert ("cv2_stream", "snapshot", "local_reason", "image") in edges

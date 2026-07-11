@@ -15,7 +15,7 @@
       {
         "name": "blacknode-vision",
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
-        "node_types": ["CV2ColorObjectTracker", "CV2HSVMask", "CV2TrackerPythonExport", "VisionDetectionPrompt", "VisionVLMDescribe"]
+        "node_types": ["CV2ColorObjectStream", "CV2ColorObjectTracker", "CV2HSVMask", "CV2TrackerPythonExport", "VisionDetectionPrompt", "VisionReasoningDashboard", "VisionVLMDescribe"]
       },
       "blacknode-ros2"
     ]
@@ -122,79 +122,77 @@
         "message_type": ["auto", "raw", "compressed"]
       }
     },
-    "snapshot": {
-      "id": "snapshot",
-      "type": "ROS2ImageSnapshot",
+    "cv2_stream": {
+      "id": "cv2_stream",
+      "type": "CV2ColorObjectStream",
       "params": {
-        "topic": "/camera/image_raw",
-        "timeout": 10.0,
-        "output_format": "jpeg",
-        "jpeg_quality": 82
-      },
-      "pos": [740, 360],
-      "inputs": ["trigger", "topic", "timeout", "output_format", "jpeg_quality"],
-      "outputs": ["image", "metadata", "report"],
-      "input_types": {
-        "trigger": "Any",
-        "topic": "Text",
-        "timeout": "Float",
-        "output_format": "Text",
-        "jpeg_quality": "Int"
-      },
-      "output_types": {"image": "Image", "metadata": "Dict", "report": "Text"},
-      "input_defaults": {
-        "topic": "/camera/image_raw",
-        "timeout": 10.0,
-        "output_format": "jpeg",
-        "jpeg_quality": 82
-      },
-      "input_choices": {"output_format": ["png", "jpeg"]}
-    },
-    "tracker": {
-      "id": "tracker",
-      "type": "CV2ColorObjectTracker",
-      "params": {
+        "action": "start",
+        "stream_id": "cube_tracker",
         "label": "cube",
         "lower_hsv": "35,60,60",
         "upper_hsv": "85,255,255",
         "min_area": 300,
         "max_detections": 3,
         "blur": 5,
-        "morphology_iters": 1
+        "morphology_iters": 1,
+        "host": "127.0.0.1",
+        "port": 0,
+        "max_fps": 10.0,
+        "max_width": 960,
+        "jpeg_quality": 82
       },
-      "pos": [1120, 320],
-      "inputs": ["image", "label", "lower_hsv", "upper_hsv", "min_area", "max_detections", "blur", "morphology_iters"],
-      "outputs": ["overlay", "mask", "found", "center_x", "center_y", "area", "detection", "detections", "report"],
+      "pos": [1120, 250],
+      "inputs": ["trigger", "action", "stream_id", "source_url", "label", "lower_hsv", "upper_hsv", "min_area", "max_detections", "blur", "morphology_iters", "host", "port", "max_fps", "max_width", "jpeg_quality"],
+      "outputs": ["preview", "snapshot", "streaming", "stream_url", "snapshot_url", "detection_url", "stream_id", "found", "detection", "detections", "report"],
       "input_types": {
-        "image": "Image",
+        "trigger": "Any",
+        "action": "Text",
+        "stream_id": "Text",
+        "source_url": "Text",
         "label": "Text",
         "lower_hsv": "Text",
         "upper_hsv": "Text",
         "min_area": "Int",
         "max_detections": "Int",
         "blur": "Int",
-        "morphology_iters": "Int"
+        "morphology_iters": "Int",
+        "host": "Text",
+        "port": "Int",
+        "max_fps": "Float",
+        "max_width": "Int",
+        "jpeg_quality": "Int"
       },
       "output_types": {
-        "overlay": "Image",
-        "mask": "Image",
+        "preview": "Image",
+        "snapshot": "Image",
+        "streaming": "Bool",
+        "stream_url": "Text",
+        "snapshot_url": "Text",
+        "detection_url": "Text",
+        "stream_id": "Text",
         "found": "Bool",
-        "center_x": "Int",
-        "center_y": "Int",
-        "area": "Float",
         "detection": "Dict",
         "detections": "List",
         "report": "Text"
       },
       "input_defaults": {
+        "action": "start",
+        "stream_id": "cube_tracker",
+        "source_url": "",
         "label": "cube",
         "lower_hsv": "35,60,60",
         "upper_hsv": "85,255,255",
         "min_area": 300,
         "max_detections": 3,
         "blur": 5,
-        "morphology_iters": 1
-      }
+        "morphology_iters": 1,
+        "host": "127.0.0.1",
+        "port": 0,
+        "max_fps": 10.0,
+        "max_width": 960,
+        "jpeg_quality": 82
+      },
+      "input_choices": {"action": ["start", "stop"]}
     },
     "detection_prompt": {
       "id": "detection_prompt",
@@ -226,10 +224,10 @@
       "type": "VisionVLMDescribe",
       "params": {
         "provider": "ollama",
-        "model": "qwen2.5vl:7b",
+        "model": "qwen3-vl:4b",
         "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
-        "max_tokens": 512,
+        "max_tokens": 4096,
         "temperature": 0.2,
         "allow_text_only": true
       },
@@ -253,14 +251,35 @@
         "question": "What should the robot do next?",
         "system": "You are a robot vision assistant. Use only the provided CV2 detections. Return state, confidence, and one next action.",
         "provider": "ollama",
-        "model": "qwen2.5vl:7b",
+        "model": "qwen3-vl:4b",
         "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
-        "max_tokens": 512,
+        "max_tokens": 4096,
         "temperature": 0.2,
         "allow_text_only": true
       },
       "input_choices": {"provider": ["openai-compatible", "anthropic", "ollama", "auto"]}
+    },
+    "reasoning_dashboard": {
+      "id": "reasoning_dashboard",
+      "type": "VisionReasoningDashboard",
+      "params": {
+        "title": "Blacknode Cube Reasoning"
+      },
+      "pos": [2240, 220],
+      "inputs": ["image", "answer", "prompt", "report", "title"],
+      "outputs": ["dashboard", "ready", "summary"],
+      "input_types": {
+        "image": "Image",
+        "answer": "Text",
+        "prompt": "Text",
+        "report": "Text",
+        "title": "Text"
+      },
+      "output_types": {"dashboard": "Image", "ready": "Bool", "summary": "Dict"},
+      "input_defaults": {
+        "title": "Blacknode Cube Reasoning"
+      }
     },
     "python_export": {
       "id": "python_export",
@@ -322,17 +341,6 @@
       "output_types": {"image": "Image"},
       "input_defaults": {}
     },
-    "mask_out": {
-      "id": "mask_out",
-      "type": "OutputImage",
-      "params": {},
-      "pos": [1500, 80],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
-      "input_defaults": {}
-    },
     "detection_out": {
       "id": "detection_out",
       "type": "Output",
@@ -366,6 +374,17 @@
       "output_types": {},
       "input_defaults": {}
     },
+    "reason_dashboard_out": {
+      "id": "reason_dashboard_out",
+      "type": "OutputImage",
+      "params": {},
+      "pos": [2620, 220],
+      "inputs": ["image"],
+      "outputs": ["image"],
+      "input_types": {"image": "Image"},
+      "output_types": {"image": "Image"},
+      "input_defaults": {}
+    },
     "python_out": {
       "id": "python_out",
       "type": "Output",
@@ -381,17 +400,22 @@
   "edges": [
     {"from": "check", "from_port": "report", "to": "camera_run", "to_port": "trigger"},
     {"from": "camera_run", "from_port": "report", "to": "stream", "to_port": "trigger"},
-    {"from": "camera_run", "from_port": "report", "to": "snapshot", "to_port": "trigger"},
     {"from": "stream", "from_port": "preview", "to": "stream_out", "to_port": "image"},
-    {"from": "snapshot", "from_port": "image", "to": "tracker", "to_port": "image"},
-    {"from": "tracker", "from_port": "overlay", "to": "overlay_out", "to_port": "image"},
-    {"from": "tracker", "from_port": "mask", "to": "mask_out", "to_port": "image"},
-    {"from": "tracker", "from_port": "detection", "to": "detection_out", "to_port": "value"},
-    {"from": "tracker", "from_port": "detection", "to": "detection_prompt", "to_port": "detection"},
-    {"from": "tracker", "from_port": "detections", "to": "detection_prompt", "to_port": "detections"},
+    {"from": "stream", "from_port": "report", "to": "cv2_stream", "to_port": "trigger"},
+    {"from": "stream", "from_port": "snapshot_url", "to": "cv2_stream", "to_port": "source_url"},
+    {"from": "cv2_stream", "from_port": "preview", "to": "overlay_out", "to_port": "image"},
+    {"from": "cv2_stream", "from_port": "detection", "to": "detection_out", "to_port": "value"},
+    {"from": "cv2_stream", "from_port": "detection", "to": "detection_prompt", "to_port": "detection"},
+    {"from": "cv2_stream", "from_port": "detections", "to": "detection_prompt", "to_port": "detections"},
+    {"from": "cv2_stream", "from_port": "snapshot", "to": "local_reason", "to_port": "image"},
+    {"from": "cv2_stream", "from_port": "snapshot", "to": "reasoning_dashboard", "to_port": "image"},
     {"from": "detection_prompt", "from_port": "prompt", "to": "local_reason", "to_port": "question"},
+    {"from": "detection_prompt", "from_port": "prompt", "to": "reasoning_dashboard", "to_port": "prompt"},
     {"from": "local_reason", "from_port": "text", "to": "reason_out", "to_port": "value"},
     {"from": "local_reason", "from_port": "report", "to": "reason_report_out", "to_port": "value"},
+    {"from": "local_reason", "from_port": "text", "to": "reasoning_dashboard", "to_port": "answer"},
+    {"from": "local_reason", "from_port": "report", "to": "reasoning_dashboard", "to_port": "report"},
+    {"from": "reasoning_dashboard", "from_port": "dashboard", "to": "reason_dashboard_out", "to_port": "image"},
     {"from": "python_export", "from_port": "source", "to": "python_out", "to_port": "value"}
   ]
 }
