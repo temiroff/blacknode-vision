@@ -20,7 +20,6 @@
           "CV2ColorTargetHint",
           "CV2ColorObjectTracker",
           "CV2HSVMask",
-          "CV2TrackerPythonExport",
           "VisionReasoningStream"
         ]
       },
@@ -205,7 +204,7 @@
       "id": "target_prompt",
       "type": "Text",
       "params": {
-        "value": "Track the green cube. If no color is specified, inspect the image and choose the most visible colored cube or object to track. Always mention the target color."
+        "value": "Track the most visible colored cube or object. If I specify a color in this prompt, use that exact color. If no color is specified, inspect the image and choose the target color. Always mention the chosen target color."
       },
       "pos": [
         740,
@@ -225,10 +224,10 @@
       "id": "target_hint",
       "type": "CV2ColorTargetHint",
       "params": {
-        "target": "track green cube",
+        "target": "",
         "reasoning": "",
         "reasoning_state_url": "",
-        "reasoning_wait_seconds": 12.0,
+        "reasoning_wait_seconds": 0.0,
         "fallback_color": "green",
         "fallback_label": "cube"
       },
@@ -275,10 +274,10 @@
         "report": "Text"
       },
       "input_defaults": {
-        "target": "track green cube",
+        "target": "",
         "reasoning": "",
         "reasoning_state_url": "",
-        "reasoning_wait_seconds": 12.0,
+        "reasoning_wait_seconds": 0.0,
         "fallback_color": "green",
         "fallback_label": "cube"
       },
@@ -303,6 +302,10 @@
       "params": {
         "action": "start",
         "stream_id": "cube_tracker",
+        "target": "",
+        "reasoning_state_url": "",
+        "fallback_color": "green",
+        "target_update_seconds": 2.0,
         "label": "cube",
         "lower_hsv": "35,60,60",
         "upper_hsv": "85,255,255",
@@ -325,6 +328,10 @@
         "action",
         "stream_id",
         "source_url",
+        "target",
+        "reasoning_state_url",
+        "fallback_color",
+        "target_update_seconds",
         "label",
         "lower_hsv",
         "upper_hsv",
@@ -359,6 +366,10 @@
         "action": "Text",
         "stream_id": "Text",
         "source_url": "Text",
+        "target": "Text",
+        "reasoning_state_url": "Text",
+        "fallback_color": "Text",
+        "target_update_seconds": "Float",
         "label": "Text",
         "lower_hsv": "Text",
         "upper_hsv": "Text",
@@ -392,6 +403,10 @@
         "action": "start",
         "stream_id": "cube_tracker",
         "source_url": "",
+        "target": "",
+        "reasoning_state_url": "",
+        "fallback_color": "green",
+        "target_update_seconds": 2.0,
         "label": "cube",
         "lower_hsv": "35,60,60",
         "upper_hsv": "85,255,255",
@@ -409,63 +424,19 @@
         "action": [
           "start",
           "stop"
+        ],
+        "fallback_color": [
+          "black",
+          "blue",
+          "cyan",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "white",
+          "yellow"
         ]
-      }
-    },
-    "python_export": {
-      "id": "python_export",
-      "type": "CV2TrackerPythonExport",
-      "params": {
-        "label": "cube",
-        "lower_hsv": "35,60,60",
-        "upper_hsv": "85,255,255",
-        "min_area": 300,
-        "camera_device": 0,
-        "width": 640,
-        "height": 480,
-        "show_preview": true
-      },
-      "pos": [
-        1500,
-        800
-      ],
-      "inputs": [
-        "label",
-        "lower_hsv",
-        "upper_hsv",
-        "min_area",
-        "camera_device",
-        "width",
-        "height",
-        "show_preview"
-      ],
-      "outputs": [
-        "source",
-        "report"
-      ],
-      "input_types": {
-        "label": "Text",
-        "lower_hsv": "Text",
-        "upper_hsv": "Text",
-        "min_area": "Int",
-        "camera_device": "Int",
-        "width": "Int",
-        "height": "Int",
-        "show_preview": "Bool"
-      },
-      "output_types": {
-        "source": "Text",
-        "report": "Text"
-      },
-      "input_defaults": {
-        "label": "cube",
-        "lower_hsv": "35,60,60",
-        "upper_hsv": "85,255,255",
-        "min_area": 300,
-        "camera_device": 0,
-        "width": 640,
-        "height": 480,
-        "show_preview": true
       }
     },
     "stream_out": {
@@ -574,26 +545,6 @@
       "output_types": {
         "image": "Image"
       },
-      "input_defaults": {}
-    },
-    "python_out": {
-      "id": "python_out",
-      "type": "Output",
-      "params": {
-        "label": "Standalone Python tracker"
-      },
-      "pos": [
-        1870,
-        800
-      ],
-      "inputs": [
-        "value"
-      ],
-      "outputs": [],
-      "input_types": {
-        "value": "Any"
-      },
-      "output_types": {},
       "input_defaults": {}
     },
     "live_reason": {
@@ -746,12 +697,6 @@
     {
       "from": "target_prompt",
       "from_port": "value",
-      "to": "target_hint",
-      "to_port": "target"
-    },
-    {
-      "from": "target_prompt",
-      "from_port": "value",
       "to": "live_reason",
       "to_port": "prompt"
     },
@@ -759,6 +704,12 @@
       "from": "live_reason",
       "from_port": "state_url",
       "to": "target_hint",
+      "to_port": "reasoning_state_url"
+    },
+    {
+      "from": "live_reason",
+      "from_port": "state_url",
+      "to": "cv2_stream",
       "to_port": "reasoning_state_url"
     },
     {
@@ -796,30 +747,6 @@
       "from_port": "detection",
       "to": "detection_out",
       "to_port": "value"
-    },
-    {
-      "from": "python_export",
-      "from_port": "source",
-      "to": "python_out",
-      "to_port": "value"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "label",
-      "to": "python_export",
-      "to_port": "label"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "lower_hsv",
-      "to": "python_export",
-      "to_port": "lower_hsv"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "upper_hsv",
-      "to": "python_export",
-      "to_port": "upper_hsv"
     },
     {
       "from": "stream",

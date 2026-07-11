@@ -79,9 +79,9 @@ rotation:=0
   stream visible, capture one frame, call the VLM, and render a reasoning
   dashboard beside the image.
 - **Blacknode Vision CV2 Cube Local Reasoning** — start the USB camera, stream
-  the raw image, stream a live OpenCV cube-tracking overlay and mask, run live
-  image-first Ollama/Qwen reasoning from the raw camera snapshot, and generate a
-  standalone Python tracker.
+  the raw image, run live image-first Ollama/Qwen reasoning from the raw camera
+  snapshot, resolve the target color from the reasoning state, and stream a live
+  OpenCV tracking overlay and mask.
 
 For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
 auto-sources a ROS workspace when it finds exactly one `ros2_ws/install/setup.bash`.
@@ -158,13 +158,13 @@ lower_hsv: 35,60,60
 upper_hsv: 85,255,255
 ```
 
-Use `CV2ColorTargetHint` when you want the target to come from text or model
-reasoning. Connect a `Text` prompt such as `track red cube` into
-`CV2ColorTargetHint.target`, then connect `label`, `lower_hsv`, and
-`upper_hsv` into `CV2ColorObjectStream` or `CV2ColorObjectTracker`. If the
-prompt is vague, connect `VisionReasoningStream.state_url` into
-`CV2ColorTargetHint.reasoning_state_url`; the hint node can read the model's
-latest answer and extract a color before starting the fast CV2 tracker.
+In the live reasoning template, the target prompt goes to the VLM first, not
+directly to CV2. Connect `VisionReasoningStream.state_url` into
+`CV2ColorTargetHint.reasoning_state_url` and `CV2ColorObjectStream.reasoning_state_url`.
+The model answer chooses the target color, then the CV2 stream updates the HSV
+range while it is running. For non-VLM workflows, `CV2ColorTargetHint.target`
+or `CV2ColorObjectStream.target` can still accept direct text such as
+`track red cube`.
 
 The CV2 tracker is still a fast color-threshold tracker, so it does not detect
 every cube automatically by shape. The VLM/reasoning side chooses what color to
