@@ -17,6 +17,7 @@ EXPECTED_NODES = {
     "VisionDetectionPrompt": "Vision",
     "VisionFramePrompt": "Vision",
     "VisionReasoningDashboard": "Vision",
+    "VisionReasoningStream": "Vision",
     "VisionStreamStatus": "Vision",
     "VisionVLMDescribe": "Vision",
 }
@@ -278,6 +279,7 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
             "ok": True,
             "stream_url": "http://127.0.0.1:9100/stream.mjpg",
             "snapshot_url": "http://127.0.0.1:9100/snapshot.jpg",
+            "mask_stream_url": "http://127.0.0.1:9100/mask.mjpg",
             "mask_url": "http://127.0.0.1:9100/mask.png",
             "detection_url": "http://127.0.0.1:9100/detection.json",
             "detection": {
@@ -298,7 +300,7 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
     })
     assert result["streaming"] is True
     assert result["preview"] == "http://127.0.0.1:9100/stream.mjpg"
-    assert result["mask"] == "http://127.0.0.1:9100/mask.png"
+    assert result["mask"] == "http://127.0.0.1:9100/mask.mjpg"
     assert result["found"] is True
     assert result["detection"]["center"]["x"] == 40
     assert calls[0]["source_url"] == "http://127.0.0.1:9000/snapshot.jpg"
@@ -316,6 +318,49 @@ def test_cv2_color_object_stream_stops_runtime(monkeypatch):
     result = fn({"action": "stop", "stream_id": "cube_tracker"})
     assert result["streaming"] is False
     assert "stopped 1 CV2 stream" in result["report"]
+
+
+def test_vision_reasoning_stream_starts_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["VisionReasoningStream"]
+    calls = []
+
+    def fake_start_reasoning_stream(**kwargs):
+        calls.append(kwargs)
+        return {
+            "ok": True,
+            "stream_url": "http://127.0.0.1:9200/dashboard.mjpg",
+            "snapshot_url": "http://127.0.0.1:9200/dashboard.jpg",
+            "state_url": "http://127.0.0.1:9200/state.json",
+        }
+
+    monkeypatch.setattr(fn.__globals__["cv2_runtime"], "start_reasoning_stream", fake_start_reasoning_stream)
+    result = fn({
+        "stream_id": "reason",
+        "image_url": "http://127.0.0.1:9000/snapshot.jpg",
+        "prompt": "Describe what you see.",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "max_tokens": 512,
+    })
+    assert result["streaming"] is True
+    assert result["preview"] == "http://127.0.0.1:9200/dashboard.mjpg"
+    assert result["state_url"] == "http://127.0.0.1:9200/state.json"
+    assert calls[0]["image_url"] == "http://127.0.0.1:9000/snapshot.jpg"
+    assert calls[0]["detection_url"] == ""
+    assert calls[0]["max_tokens"] == 4096
+
+
+def test_vision_reasoning_stream_stops_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["VisionReasoningStream"]
+
+    def fake_stop_reasoning_stream(stream_id):
+        assert stream_id == "reason"
+        return {"ok": True, "stopped": 1}
+
+    monkeypatch.setattr(fn.__globals__["cv2_runtime"], "stop_reasoning_stream", fake_stop_reasoning_stream)
+    result = fn({"action": "stop", "stream_id": "reason"})
+    assert result["streaming"] is False
+    assert "stopped 1 reasoning stream" in result["report"]
 
 
 def test_cv2_tracker_python_export_contains_config():
@@ -352,10 +397,11 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     path = TEMPLATE_DIR / "vision-cv2-cube-local-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
-    assert workflow["node_meta"]["local_reason"]["params"]["model"] == "qwen3-vl:4b"
-    assert workflow["node_meta"]["local_reason"]["params"]["max_tokens"] == 4096
-    assert "First describe the actual attached camera frame" in workflow["node_meta"]["local_reason"]["input_defaults"]["system"]
-    assert "Describe what you see" in workflow["node_meta"]["detection_prompt"]["params"]["question"]
+    assert workflow["node_meta"]["live_reason"]["type"] == "VisionReasoningStream"
+    assert workflow["node_meta"]["live_reason"]["params"]["model"] == "qwen3-vl:4b"
+    assert workflow["node_meta"]["live_reason"]["params"]["max_tokens"] == 4096
+    assert "Describe what you see" in workflow["node_meta"]["live_reason"]["params"]["prompt"]
+    assert "Do not rely on CV2 detections" in workflow["node_meta"]["live_reason"]["params"]["system"]
     edges = {
         (edge["from"], edge["from_port"], edge["to"], edge["to_port"])
         for edge in workflow["edges"]
@@ -363,4 +409,6 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
     assert ("cv2_stream", "preview", "overlay_out", "image") in edges
     assert ("cv2_stream", "mask", "mask_out", "image") in edges
-    assert ("cv2_stream", "snapshot", "local_reason", "image") in edges
+    assert ("stream", "snapshot_url", "live_reason", "image_url") in edges
+    assert ("live_reason", "preview", "reason_dashboard_out", "image") in edges
+    assert ("cv2_stream", "detection_url", "live_reason", "detection_url") not in edges

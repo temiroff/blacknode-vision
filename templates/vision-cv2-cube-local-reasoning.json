@@ -9,13 +9,19 @@
   },
   "metadata": {
     "template": true,
-    "description": "Start the bundled USB camera, stream a live OpenCV cube overlay, describe what the camera sees with local Ollama/Qwen, reason over detections, and generate a standalone Python tracker.",
+    "description": "Start the bundled USB camera, stream raw camera, live CV2 overlay/mask, and live image-first Ollama/Qwen reasoning; CV2 remains a fast color tracker.",
     "color": "#2563eb",
     "required_packages": [
       {
         "name": "blacknode-vision",
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
-        "node_types": ["CV2ColorObjectStream", "CV2ColorObjectTracker", "CV2HSVMask", "CV2TrackerPythonExport", "VisionDetectionPrompt", "VisionReasoningDashboard", "VisionVLMDescribe"]
+        "node_types": [
+          "CV2ColorObjectStream",
+          "CV2ColorObjectTracker",
+          "CV2HSVMask",
+          "CV2TrackerPythonExport",
+          "VisionReasoningStream"
+        ]
       },
       "blacknode-ros2"
     ]
@@ -24,13 +30,32 @@
     "check": {
       "id": "check",
       "type": "ROS2SystemCheck",
-      "params": {"refresh": true},
-      "pos": [40, 170],
-      "inputs": ["refresh"],
-      "outputs": ["available", "backend", "report"],
-      "input_types": {"refresh": "Bool"},
-      "output_types": {"available": "Bool", "backend": "Text", "report": "Text"},
-      "input_defaults": {"refresh": true}
+      "params": {
+        "refresh": true
+      },
+      "pos": [
+        40,
+        170
+      ],
+      "inputs": [
+        "refresh"
+      ],
+      "outputs": [
+        "available",
+        "backend",
+        "report"
+      ],
+      "input_types": {
+        "refresh": "Bool"
+      },
+      "output_types": {
+        "available": "Bool",
+        "backend": "Text",
+        "report": "Text"
+      },
+      "input_defaults": {
+        "refresh": true
+      }
     },
     "camera_run": {
       "id": "camera_run",
@@ -44,9 +69,25 @@
         "expected_topic": "/camera/image_raw",
         "wait_seconds": 10.0
       },
-      "pos": [390, 120],
-      "inputs": ["trigger", "action", "run_id", "package", "executable", "arguments", "expected_topic", "wait_seconds"],
-      "outputs": ["running", "run_id", "report"],
+      "pos": [
+        390,
+        120
+      ],
+      "inputs": [
+        "trigger",
+        "action",
+        "run_id",
+        "package",
+        "executable",
+        "arguments",
+        "expected_topic",
+        "wait_seconds"
+      ],
+      "outputs": [
+        "running",
+        "run_id",
+        "report"
+      ],
       "input_types": {
         "trigger": "Any",
         "action": "Text",
@@ -57,7 +98,11 @@
         "expected_topic": "Text",
         "wait_seconds": "Float"
       },
-      "output_types": {"running": "Bool", "run_id": "Text", "report": "Text"},
+      "output_types": {
+        "running": "Bool",
+        "run_id": "Text",
+        "report": "Text"
+      },
       "input_defaults": {
         "action": "start",
         "run_id": "vision_camera",
@@ -67,7 +112,12 @@
         "expected_topic": "/camera/image_raw",
         "wait_seconds": 10.0
       },
-      "input_choices": {"action": ["start", "stop"]}
+      "input_choices": {
+        "action": [
+          "start",
+          "stop"
+        ]
+      }
     },
     "stream": {
       "id": "stream",
@@ -83,9 +133,30 @@
         "max_width": 960,
         "jpeg_quality": 80
       },
-      "pos": [740, 60],
-      "inputs": ["trigger", "action", "stream_id", "topic", "message_type", "host", "port", "max_fps", "max_width", "jpeg_quality"],
-      "outputs": ["preview", "streaming", "stream_url", "snapshot_url", "stream_id", "report"],
+      "pos": [
+        740,
+        60
+      ],
+      "inputs": [
+        "trigger",
+        "action",
+        "stream_id",
+        "topic",
+        "message_type",
+        "host",
+        "port",
+        "max_fps",
+        "max_width",
+        "jpeg_quality"
+      ],
+      "outputs": [
+        "preview",
+        "streaming",
+        "stream_url",
+        "snapshot_url",
+        "stream_id",
+        "report"
+      ],
       "input_types": {
         "trigger": "Any",
         "action": "Text",
@@ -118,8 +189,15 @@
         "jpeg_quality": 80
       },
       "input_choices": {
-        "action": ["start", "stop"],
-        "message_type": ["auto", "raw", "compressed"]
+        "action": [
+          "start",
+          "stop"
+        ],
+        "message_type": [
+          "auto",
+          "raw",
+          "compressed"
+        ]
       }
     },
     "cv2_stream": {
@@ -141,9 +219,44 @@
         "max_width": 960,
         "jpeg_quality": 82
       },
-      "pos": [1120, 250],
-      "inputs": ["trigger", "action", "stream_id", "source_url", "label", "lower_hsv", "upper_hsv", "min_area", "max_detections", "blur", "morphology_iters", "host", "port", "max_fps", "max_width", "jpeg_quality"],
-      "outputs": ["preview", "snapshot", "mask", "streaming", "stream_url", "snapshot_url", "mask_url", "detection_url", "stream_id", "found", "detection", "detections", "report"],
+      "pos": [
+        1120,
+        250
+      ],
+      "inputs": [
+        "trigger",
+        "action",
+        "stream_id",
+        "source_url",
+        "label",
+        "lower_hsv",
+        "upper_hsv",
+        "min_area",
+        "max_detections",
+        "blur",
+        "morphology_iters",
+        "host",
+        "port",
+        "max_fps",
+        "max_width",
+        "jpeg_quality"
+      ],
+      "outputs": [
+        "preview",
+        "snapshot",
+        "mask",
+        "streaming",
+        "stream_url",
+        "snapshot_url",
+        "mask_stream_url",
+        "mask_url",
+        "detection_url",
+        "stream_id",
+        "found",
+        "detection",
+        "detections",
+        "report"
+      ],
       "input_types": {
         "trigger": "Any",
         "action": "Text",
@@ -169,6 +282,7 @@
         "streaming": "Bool",
         "stream_url": "Text",
         "snapshot_url": "Text",
+        "mask_stream_url": "Text",
         "mask_url": "Text",
         "detection_url": "Text",
         "stream_id": "Text",
@@ -194,93 +308,11 @@
         "max_width": 960,
         "jpeg_quality": 82
       },
-      "input_choices": {"action": ["start", "stop"]}
-    },
-    "detection_prompt": {
-      "id": "detection_prompt",
-      "type": "VisionDetectionPrompt",
-      "params": {
-        "question": "Describe what you see in this camera frame. Then say where the cube is, how confident you are, and what the robot should do next.",
-        "context": "A live USB camera frame with an OpenCV cube-tracking overlay is attached to the VLM call.",
-        "robot_task": "visually inspect the scene, track the cube, and prepare a safe next movement"
-      },
-      "pos": [1500, 470],
-      "inputs": ["detection", "detections", "question", "context", "robot_task"],
-      "outputs": ["prompt", "summary"],
-      "input_types": {
-        "detection": "Dict",
-        "detections": "List",
-        "question": "Text",
-        "context": "Text",
-        "robot_task": "Text"
-      },
-      "output_types": {"prompt": "Text", "summary": "Dict"},
-      "input_defaults": {
-        "question": "Describe what you see in this camera frame. Then say where the cube is, how confident you are, and what the robot should do next.",
-        "context": "A live USB camera frame with an OpenCV cube-tracking overlay is attached to the VLM call.",
-        "robot_task": "visually inspect the scene, track the cube, and prepare a safe next movement"
-      }
-    },
-    "local_reason": {
-      "id": "local_reason",
-      "type": "VisionVLMDescribe",
-      "params": {
-        "provider": "ollama",
-        "model": "qwen3-vl:4b",
-        "endpoint_url": "http://127.0.0.1:11434",
-        "api_key": "",
-        "max_tokens": 4096,
-        "temperature": 0.2,
-        "allow_text_only": true
-      },
-      "pos": [1870, 470],
-      "inputs": ["image", "question", "system", "provider", "model", "endpoint_url", "api_key", "max_tokens", "temperature", "allow_text_only"],
-      "outputs": ["text", "report", "raw"],
-      "input_types": {
-        "image": "Image",
-        "question": "Text",
-        "system": "Text",
-        "provider": "Text",
-        "model": "Text",
-        "endpoint_url": "Text",
-        "api_key": "Text",
-        "max_tokens": "Int",
-        "temperature": "Float",
-        "allow_text_only": "Bool"
-      },
-      "output_types": {"text": "Text", "report": "Text", "raw": "Dict"},
-      "input_defaults": {
-        "question": "What should the robot do next?",
-        "system": "You are a robot vision assistant. First describe the actual attached camera frame in plain language. Then use the CV2 cube detections to report target state, confidence, uncertainty, and one safe next action. Do not describe hidden reasoning.",
-        "provider": "ollama",
-        "model": "qwen3-vl:4b",
-        "endpoint_url": "http://127.0.0.1:11434",
-        "api_key": "",
-        "max_tokens": 4096,
-        "temperature": 0.2,
-        "allow_text_only": true
-      },
-      "input_choices": {"provider": ["openai-compatible", "anthropic", "ollama", "auto"]}
-    },
-    "reasoning_dashboard": {
-      "id": "reasoning_dashboard",
-      "type": "VisionReasoningDashboard",
-      "params": {
-        "title": "Blacknode Cube Reasoning"
-      },
-      "pos": [2240, 220],
-      "inputs": ["image", "answer", "prompt", "report", "title"],
-      "outputs": ["dashboard", "ready", "summary"],
-      "input_types": {
-        "image": "Image",
-        "answer": "Text",
-        "prompt": "Text",
-        "report": "Text",
-        "title": "Text"
-      },
-      "output_types": {"dashboard": "Image", "ready": "Bool", "summary": "Dict"},
-      "input_defaults": {
-        "title": "Blacknode Cube Reasoning"
+      "input_choices": {
+        "action": [
+          "start",
+          "stop"
+        ]
       }
     },
     "python_export": {
@@ -296,9 +328,24 @@
         "height": 480,
         "show_preview": true
       },
-      "pos": [1500, 800],
-      "inputs": ["label", "lower_hsv", "upper_hsv", "min_area", "camera_device", "width", "height", "show_preview"],
-      "outputs": ["source", "report"],
+      "pos": [
+        1500,
+        800
+      ],
+      "inputs": [
+        "label",
+        "lower_hsv",
+        "upper_hsv",
+        "min_area",
+        "camera_device",
+        "width",
+        "height",
+        "show_preview"
+      ],
+      "outputs": [
+        "source",
+        "report"
+      ],
       "input_types": {
         "label": "Text",
         "lower_hsv": "Text",
@@ -309,7 +356,10 @@
         "height": "Int",
         "show_preview": "Bool"
       },
-      "output_types": {"source": "Text", "report": "Text"},
+      "output_types": {
+        "source": "Text",
+        "report": "Text"
+      },
       "input_defaults": {
         "label": "cube",
         "lower_hsv": "35,60,60",
@@ -325,32 +375,63 @@
       "id": "stream_out",
       "type": "OutputImage",
       "params": {},
-      "pos": [1120, 40],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
+      "pos": [
+        1120,
+        40
+      ],
+      "inputs": [
+        "image"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "input_types": {
+        "image": "Image"
+      },
+      "output_types": {
+        "image": "Image"
+      },
       "input_defaults": {}
     },
     "overlay_out": {
       "id": "overlay_out",
       "type": "OutputImage",
       "params": {},
-      "pos": [1500, 250],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
+      "pos": [
+        1500,
+        250
+      ],
+      "inputs": [
+        "image"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "input_types": {
+        "image": "Image"
+      },
+      "output_types": {
+        "image": "Image"
+      },
       "input_defaults": {}
     },
     "detection_out": {
       "id": "detection_out",
       "type": "Output",
-      "params": {"label": "CV2 detection"},
-      "pos": [1500, 650],
-      "inputs": ["value"],
+      "params": {
+        "label": "CV2 detection"
+      },
+      "pos": [
+        1500,
+        650
+      ],
+      "inputs": [
+        "value"
+      ],
       "outputs": [],
-      "input_types": {"value": "Any"},
+      "input_types": {
+        "value": "Any"
+      },
       "output_types": {},
       "input_defaults": {}
     },
@@ -358,78 +439,254 @@
       "id": "mask_out",
       "type": "OutputImage",
       "params": {},
-      "pos": [1500, 80],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
-      "input_defaults": {}
-    },
-    "reason_out": {
-      "id": "reason_out",
-      "type": "Output",
-      "params": {"label": "Local reasoning"},
-      "pos": [2240, 470],
-      "inputs": ["value"],
-      "outputs": [],
-      "input_types": {"value": "Any"},
-      "output_types": {},
-      "input_defaults": {}
-    },
-    "reason_report_out": {
-      "id": "reason_report_out",
-      "type": "Output",
-      "params": {"label": "Local reasoning report"},
-      "pos": [2240, 660],
-      "inputs": ["value"],
-      "outputs": [],
-      "input_types": {"value": "Any"},
-      "output_types": {},
+      "pos": [
+        1500,
+        80
+      ],
+      "inputs": [
+        "image"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "input_types": {
+        "image": "Image"
+      },
+      "output_types": {
+        "image": "Image"
+      },
       "input_defaults": {}
     },
     "reason_dashboard_out": {
       "id": "reason_dashboard_out",
       "type": "OutputImage",
       "params": {},
-      "pos": [2620, 220],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
+      "pos": [
+        2240,
+        430
+      ],
+      "inputs": [
+        "image"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "input_types": {
+        "image": "Image"
+      },
+      "output_types": {
+        "image": "Image"
+      },
       "input_defaults": {}
     },
     "python_out": {
       "id": "python_out",
       "type": "Output",
-      "params": {"label": "Standalone Python tracker"},
-      "pos": [1870, 800],
-      "inputs": ["value"],
+      "params": {
+        "label": "Standalone Python tracker"
+      },
+      "pos": [
+        1870,
+        800
+      ],
+      "inputs": [
+        "value"
+      ],
       "outputs": [],
-      "input_types": {"value": "Any"},
+      "input_types": {
+        "value": "Any"
+      },
       "output_types": {},
       "input_defaults": {}
+    },
+    "live_reason": {
+      "id": "live_reason",
+      "type": "VisionReasoningStream",
+      "params": {
+        "action": "start",
+        "stream_id": "live_reasoning",
+        "prompt": "Describe what you see in this camera frame. If a colored cube is visible, mention its color and approximate location. Then give one useful next robot action.",
+        "system": "You are a robot vision assistant. Describe only visible evidence from the camera image first. Do not rely on CV2 detections unless they are explicitly provided. Keep the answer concise.",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
+        "api_key": "",
+        "temperature": 0.2,
+        "max_tokens": 4096,
+        "interval_seconds": 8.0,
+        "host": "127.0.0.1",
+        "port": 0,
+        "max_fps": 2.0,
+        "max_width": 960,
+        "title": "Blacknode Live Vision Reasoning"
+      },
+      "pos": [
+        1870,
+        430
+      ],
+      "inputs": [
+        "trigger",
+        "action",
+        "stream_id",
+        "image_url",
+        "detection_url",
+        "prompt",
+        "system",
+        "provider",
+        "model",
+        "endpoint_url",
+        "api_key",
+        "temperature",
+        "max_tokens",
+        "interval_seconds",
+        "host",
+        "port",
+        "max_fps",
+        "max_width",
+        "title"
+      ],
+      "outputs": [
+        "preview",
+        "streaming",
+        "stream_url",
+        "snapshot_url",
+        "state_url",
+        "stream_id",
+        "report"
+      ],
+      "input_types": {
+        "trigger": "Any",
+        "action": "Text",
+        "stream_id": "Text",
+        "image_url": "Text",
+        "detection_url": "Text",
+        "prompt": "Text",
+        "system": "Text",
+        "provider": "Text",
+        "model": "Text",
+        "endpoint_url": "Text",
+        "api_key": "Text",
+        "temperature": "Float",
+        "max_tokens": "Int",
+        "interval_seconds": "Float",
+        "host": "Text",
+        "port": "Int",
+        "max_fps": "Float",
+        "max_width": "Int",
+        "title": "Text"
+      },
+      "output_types": {
+        "preview": "Image",
+        "streaming": "Bool",
+        "stream_url": "Text",
+        "snapshot_url": "Text",
+        "state_url": "Text",
+        "stream_id": "Text",
+        "report": "Text"
+      },
+      "input_defaults": {
+        "action": "start",
+        "stream_id": "live_reasoning",
+        "image_url": "",
+        "detection_url": "",
+        "prompt": "Describe what you see in this camera frame. If a colored cube is visible, mention its color and approximate location. Then give one useful next robot action.",
+        "system": "You are a robot vision assistant. Describe only visible evidence from the camera image first. Do not rely on CV2 detections unless they are explicitly provided. Keep the answer concise.",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
+        "api_key": "",
+        "temperature": 0.2,
+        "max_tokens": 4096,
+        "interval_seconds": 8.0,
+        "host": "127.0.0.1",
+        "port": 0,
+        "max_fps": 2.0,
+        "max_width": 960,
+        "title": "Blacknode Live Vision Reasoning"
+      },
+      "input_choices": {
+        "action": [
+          "start",
+          "stop"
+        ],
+        "provider": [
+          "ollama"
+        ]
+      }
     }
   },
   "edges": [
-    {"from": "check", "from_port": "report", "to": "camera_run", "to_port": "trigger"},
-    {"from": "camera_run", "from_port": "report", "to": "stream", "to_port": "trigger"},
-    {"from": "stream", "from_port": "preview", "to": "stream_out", "to_port": "image"},
-    {"from": "stream", "from_port": "report", "to": "cv2_stream", "to_port": "trigger"},
-    {"from": "stream", "from_port": "snapshot_url", "to": "cv2_stream", "to_port": "source_url"},
-    {"from": "cv2_stream", "from_port": "preview", "to": "overlay_out", "to_port": "image"},
-    {"from": "cv2_stream", "from_port": "mask", "to": "mask_out", "to_port": "image"},
-    {"from": "cv2_stream", "from_port": "detection", "to": "detection_out", "to_port": "value"},
-    {"from": "cv2_stream", "from_port": "detection", "to": "detection_prompt", "to_port": "detection"},
-    {"from": "cv2_stream", "from_port": "detections", "to": "detection_prompt", "to_port": "detections"},
-    {"from": "cv2_stream", "from_port": "snapshot", "to": "local_reason", "to_port": "image"},
-    {"from": "cv2_stream", "from_port": "snapshot", "to": "reasoning_dashboard", "to_port": "image"},
-    {"from": "detection_prompt", "from_port": "prompt", "to": "local_reason", "to_port": "question"},
-    {"from": "detection_prompt", "from_port": "prompt", "to": "reasoning_dashboard", "to_port": "prompt"},
-    {"from": "local_reason", "from_port": "text", "to": "reason_out", "to_port": "value"},
-    {"from": "local_reason", "from_port": "report", "to": "reason_report_out", "to_port": "value"},
-    {"from": "local_reason", "from_port": "text", "to": "reasoning_dashboard", "to_port": "answer"},
-    {"from": "local_reason", "from_port": "report", "to": "reasoning_dashboard", "to_port": "report"},
-    {"from": "reasoning_dashboard", "from_port": "dashboard", "to": "reason_dashboard_out", "to_port": "image"},
-    {"from": "python_export", "from_port": "source", "to": "python_out", "to_port": "value"}
+    {
+      "from": "check",
+      "from_port": "report",
+      "to": "camera_run",
+      "to_port": "trigger"
+    },
+    {
+      "from": "camera_run",
+      "from_port": "report",
+      "to": "stream",
+      "to_port": "trigger"
+    },
+    {
+      "from": "stream",
+      "from_port": "preview",
+      "to": "stream_out",
+      "to_port": "image"
+    },
+    {
+      "from": "stream",
+      "from_port": "report",
+      "to": "cv2_stream",
+      "to_port": "trigger"
+    },
+    {
+      "from": "stream",
+      "from_port": "snapshot_url",
+      "to": "cv2_stream",
+      "to_port": "source_url"
+    },
+    {
+      "from": "cv2_stream",
+      "from_port": "preview",
+      "to": "overlay_out",
+      "to_port": "image"
+    },
+    {
+      "from": "cv2_stream",
+      "from_port": "mask",
+      "to": "mask_out",
+      "to_port": "image"
+    },
+    {
+      "from": "cv2_stream",
+      "from_port": "detection",
+      "to": "detection_out",
+      "to_port": "value"
+    },
+    {
+      "from": "python_export",
+      "from_port": "source",
+      "to": "python_out",
+      "to_port": "value"
+    },
+    {
+      "from": "stream",
+      "from_port": "report",
+      "to": "live_reason",
+      "to_port": "trigger"
+    },
+    {
+      "from": "stream",
+      "from_port": "snapshot_url",
+      "to": "live_reason",
+      "to_port": "image_url"
+    },
+    {
+      "from": "live_reason",
+      "from_port": "preview",
+      "to": "reason_dashboard_out",
+      "to_port": "image"
+    }
   ]
 }

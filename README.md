@@ -62,9 +62,10 @@ rotation:=0
 | `VisionStreamStatus` | Renders live camera stream readiness as a dashboard image |
 | `VisionVLMDescribe` | Sends one image frame or text-only detection prompt to OpenAI-compatible, Anthropic, or local Ollama chat |
 | `VisionReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
+| `VisionReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
-| `CV2ColorObjectStream` | Starts a live MJPEG overlay stream from a camera snapshot URL and exposes current mask, snapshot, and detection JSON |
+| `CV2ColorObjectStream` | Starts live MJPEG overlay and mask streams from a camera snapshot URL and exposes current snapshot and detection JSON |
 | `CV2TrackerPythonExport` | Generates a standalone OpenCV tracker script for robot deployment experiments |
 
 ## Templates
@@ -77,8 +78,8 @@ rotation:=0
   stream visible, capture one frame, call the VLM, and render a reasoning
   dashboard beside the image.
 - **Blacknode Vision CV2 Cube Local Reasoning** — start the USB camera, stream
-  the raw image, stream a live OpenCV cube-tracking overlay, reason over the
-  overlay snapshot and detection JSON with local Ollama/Qwen, and generate a
+  the raw image, stream a live OpenCV cube-tracking overlay and mask, run live
+  image-first Ollama/Qwen reasoning from the raw camera snapshot, and generate a
   standalone Python tracker.
 
 For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
@@ -137,9 +138,10 @@ If your installed Ollama model is text-only, keep `allow_text_only` enabled and
 feed it a `VisionDetectionPrompt` from CV2 detections. If your model is a true
 local VLM, connect the camera snapshot image into `VisionVLMDescribe.image`.
 
-The live reasoning template uses a snapshot for inference, not the MJPEG stream
-itself. The stream stays live for humans; each Run/cook captures a current frame
-and sends that frame to the VLM.
+Live reasoning uses a snapshot URL for inference, not the MJPEG stream itself.
+`VisionReasoningStream` periodically samples the current snapshot and serves an
+MJPEG reasoning dashboard, so the visible panel keeps updating while the camera
+and tracker streams run.
 
 ## CV2 tracking
 
@@ -150,12 +152,18 @@ lower_hsv: 35,60,60
 upper_hsv: 85,255,255
 ```
 
-Change those values for red, blue, or other cube colors.
-`CV2ColorObjectStream` keeps an overlay preview live and exposes the latest
-mask at `/mask.png`, snapshot at `/snapshot.jpg`, and detection at
-`/detection.json`; `CV2ColorObjectTracker` is still useful for single-frame
-tests and exports. Both return structured detections, so the same prototype can
-drive a local LLM, robot control node, dashboard, or Python export.
+Change those values for red, blue, or other cube colors. The CV2 tracker is a
+fast color-threshold tracker, so it does not detect every cube automatically;
+it tracks objects matching the configured HSV range. The intended richer flow
+is image-first reasoning such as "track the red cube", then a target-hint node
+can configure a fast tracker from the VLM output.
+
+`CV2ColorObjectStream` keeps overlay and mask previews live and exposes the
+latest mask stream at `/mask.mjpg`, mask snapshot at `/mask.png`, frame
+snapshot at `/snapshot.jpg`, and detection at `/detection.json`;
+`CV2ColorObjectTracker` is still useful for single-frame tests and exports.
+Both return structured detections, so the same prototype can drive a local LLM,
+robot control node, dashboard, or Python export.
 
 ## Development
 

@@ -20,6 +20,7 @@ class SharedState:
         self.lock = threading.Lock()
         self.jpeg: bytes = b""
         self.mask_png: bytes = b""
+        self.mask_jpeg: bytes = b""
         self.detection: dict[str, Any] = {
             "ok": False,
             "found": False,
@@ -36,6 +37,10 @@ class SharedState:
     def mask_snapshot(self) -> bytes:
         with self.lock:
             return self.mask_png
+
+    def mask_stream_snapshot(self) -> bytes:
+        with self.lock:
+            return self.mask_jpeg
 
     def detection_snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -193,6 +198,14 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
             mask_ok, encoded_mask = cv2.imencode(".png", mask)
             if not mask_ok:
                 raise RuntimeError("OpenCV mask PNG encode failed")
+            mask_frame = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+            mask_jpeg_ok, encoded_mask_jpeg = cv2.imencode(
+                ".jpg",
+                mask_frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), int(args.jpeg_quality)],
+            )
+            if not mask_jpeg_ok:
+                raise RuntimeError("OpenCV mask JPEG encode failed")
             detection = detections[0] if detections else {"found": False, "label": args.label}
             report = (
                 f"tracking {args.label}: found {len(detections)} candidate(s)"
@@ -202,6 +215,7 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
             with state.lock:
                 state.jpeg = encoded.tobytes()
                 state.mask_png = encoded_mask.tobytes()
+                state.mask_jpeg = encoded_mask_jpeg.tobytes()
                 state.detection = {
                     "ok": True,
                     "found": bool(detections),
@@ -263,6 +277,27 @@ def make_handler(state: SharedState, *, max_fps: float):
                 self.send_header("Content-Length", str(len(mask_png)))
                 self.end_headers()
                 self.wfile.write(mask_png)
+                return
+            if self.path.startswith("/mask.mjpg"):
+                self.send_response(200)
+                self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                while not state.stop.is_set():
+                    jpeg = state.mask_stream_snapshot()
+                    if not jpeg:
+                        time.sleep(0.05)
+                        continue
+                    try:
+                        self.wfile.write(b"--frame\r\n")
+                        self.wfile.write(b"Content-Type: image/jpeg\r\n")
+                        self.wfile.write(f"Content-Length: {len(jpeg)}\r\n\r\n".encode("ascii"))
+                        self.wfile.write(jpeg)
+                        self.wfile.write(b"\r\n")
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        break
+                    time.sleep(1.0 / max(0.1, float(max_fps)))
                 return
             if self.path.startswith("/stream.mjpg"):
                 self.send_response(200)

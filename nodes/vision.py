@@ -17,6 +17,9 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from . import cv2_runtime
+
+from blacknode.node import Any as AnyPort
 from blacknode.node import Bool, Dict, Enum, Float, Image, Int, List, Text, node
 
 _CATEGORY = "Vision"
@@ -611,4 +614,103 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
             "answer_chars": len(answer),
             "report": report,
         },
+    }
+
+
+@node(
+    name="VisionReasoningStream",
+    category=_CATEGORY,
+    description="Start or stop a live MJPEG dashboard that periodically describes a camera image with local Ollama.",
+    inputs={
+        "trigger": AnyPort,
+        "action": Enum(["start", "stop"], default="start"),
+        "stream_id": Text(default="vision_reasoning"),
+        "image_url": Text(default=""),
+        "detection_url": Text(default=""),
+        "prompt": Text(default="Describe what you see in this camera frame. If a colored cube is visible, mention its color and approximate location. Then give one useful next robot action."),
+        "system": Text(default="You are a robot vision assistant. Describe only visible evidence from the image, then give a concise next action."),
+        "provider": Enum(["ollama"], default="ollama"),
+        "model": Text(default="qwen3-vl:4b"),
+        "endpoint_url": Text(default="http://127.0.0.1:11434"),
+        "api_key": Text(default=""),
+        "temperature": Float(default=0.2),
+        "max_tokens": Int(default=4096),
+        "interval_seconds": Float(default=8.0),
+        "host": Text(default="127.0.0.1"),
+        "port": Int(default=0),
+        "max_fps": Float(default=2.0),
+        "max_width": Int(default=960),
+        "title": Text(default="Blacknode Live Vision Reasoning"),
+    },
+    outputs={
+        "preview": Image,
+        "streaming": Bool,
+        "stream_url": Text,
+        "snapshot_url": Text,
+        "state_url": Text,
+        "stream_id": Text,
+        "report": Text,
+    },
+)
+def vision_reasoning_stream(ctx: dict) -> dict:
+    stream_id = str(ctx.get("stream_id") or "vision_reasoning").strip() or "vision_reasoning"
+    action = str(ctx.get("action") or "start").strip().lower()
+    empty = {
+        "preview": "",
+        "streaming": False,
+        "stream_url": "",
+        "snapshot_url": "",
+        "state_url": "",
+        "stream_id": stream_id,
+    }
+    if action == "stop":
+        result = cv2_runtime.stop_reasoning_stream(stream_id)
+        return {**empty, "report": f"stopped {result.get('stopped', 0)} reasoning stream(s)"}
+
+    image_url = str(ctx.get("image_url") or "").strip()
+    if not image_url:
+        return {**empty, "report": "reasoning stream FAILED: connect image_url to a camera snapshot URL"}
+
+    provider = _normal_provider(ctx.get("provider"), str(ctx.get("endpoint_url") or ""))
+    if provider != "ollama":
+        return {**empty, "report": "reasoning stream FAILED: only provider=ollama is supported for live local streaming"}
+
+    model = _default_model(provider, str(ctx.get("model") or ""))
+    max_tokens = max(1, min(int(ctx.get("max_tokens") or 4096), 8192))
+    if "qwen3" in model.lower() and max_tokens < 4096:
+        max_tokens = 4096
+    host = str(ctx.get("host") or "127.0.0.1").strip() or "127.0.0.1"
+    result = cv2_runtime.start_reasoning_stream(
+        stream_id=stream_id,
+        image_url=image_url,
+        detection_url=str(ctx.get("detection_url") or "").strip(),
+        prompt=str(ctx.get("prompt") or "").strip(),
+        system=str(ctx.get("system") or "").strip(),
+        provider=provider,
+        model=model,
+        endpoint_url=_default_endpoint(provider, str(ctx.get("endpoint_url") or "")),
+        api_key=str(ctx.get("api_key") or "").strip() or os.environ.get("OLLAMA_API_KEY", "").strip(),
+        temperature=float(ctx.get("temperature") or 0.2),
+        max_tokens=max_tokens,
+        interval_seconds=max(1.0, float(ctx.get("interval_seconds") or 8.0)),
+        host=host,
+        port=max(0, int(ctx.get("port") or 0)),
+        max_fps=max(0.1, min(10.0, float(ctx.get("max_fps") or 2.0))),
+        max_width=max(0, int(ctx.get("max_width") or 960)),
+        title=str(ctx.get("title") or "Blacknode Live Vision Reasoning").strip() or "Blacknode Live Vision Reasoning",
+    )
+    if not result.get("ok"):
+        return {**empty, "report": f"reasoning stream FAILED: {result.get('error', 'unknown error')}"}
+
+    stream_url = str(result.get("stream_url") or "")
+    snapshot_url = str(result.get("snapshot_url") or "")
+    state_url = str(result.get("state_url") or "")
+    return {
+        "preview": stream_url,
+        "streaming": True,
+        "stream_url": stream_url,
+        "snapshot_url": snapshot_url,
+        "state_url": state_url,
+        "stream_id": stream_id,
+        "report": f"LIVE REASONING STREAM running on {stream_url} from {image_url} with ollama/{model}",
     }
