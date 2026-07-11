@@ -64,6 +64,7 @@ rotation:=0
 | `VisionReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `VisionReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
+| `CV2ColorTargetHint` | Converts target/reasoning text like `track red cube` into label and HSV settings for CV2 tracking |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
 | `CV2ColorObjectStream` | Starts live MJPEG overlay and mask streams from a camera snapshot URL and exposes current snapshot and detection JSON |
 | `CV2TrackerPythonExport` | Generates a standalone OpenCV tracker script for robot deployment experiments |
@@ -143,6 +144,11 @@ Live reasoning uses a snapshot URL for inference, not the MJPEG stream itself.
 MJPEG reasoning dashboard, so the visible panel keeps updating while the camera
 and tracker streams run.
 
+Changing `interval_seconds`, model, or FPS on an already-running reasoning
+stream requires cooking the node again. The current process is started with the
+node settings it had at launch; stop and run the workflow again to apply new
+stream settings.
+
 ## CV2 tracking
 
 The cube tracker uses HSV thresholds. The default range is tuned for green:
@@ -152,11 +158,17 @@ lower_hsv: 35,60,60
 upper_hsv: 85,255,255
 ```
 
-Change those values for red, blue, or other cube colors. The CV2 tracker is a
-fast color-threshold tracker, so it does not detect every cube automatically;
-it tracks objects matching the configured HSV range. The intended richer flow
-is image-first reasoning such as "track the red cube", then a target-hint node
-can configure a fast tracker from the VLM output.
+Use `CV2ColorTargetHint` when you want the target to come from text or model
+reasoning. Connect a `Text` prompt such as `track red cube` into
+`CV2ColorTargetHint.target`, then connect `label`, `lower_hsv`, and
+`upper_hsv` into `CV2ColorObjectStream` or `CV2ColorObjectTracker`. If the
+prompt is vague, connect `VisionReasoningStream.state_url` into
+`CV2ColorTargetHint.reasoning_state_url`; the hint node can read the model's
+latest answer and extract a color before starting the fast CV2 tracker.
+
+The CV2 tracker is still a fast color-threshold tracker, so it does not detect
+every cube automatically by shape. The VLM/reasoning side chooses what color to
+track, then CV2 does the live low-latency tracking.
 
 `CV2ColorObjectStream` keeps overlay and mask previews live and exposes the
 latest mask stream at `/mask.mjpg`, mask snapshot at `/mask.png`, frame

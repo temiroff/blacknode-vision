@@ -11,6 +11,7 @@ TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 EXPECTED_NODES = {
     "CV2ColorObjectStream": "CV2",
+    "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
     "CV2HSVMask": "CV2",
     "CV2TrackerPythonExport": "CV2",
@@ -73,6 +74,66 @@ def test_detection_prompt_summarizes_cv2_output():
     assert "First describe what is visible" in result["prompt"]
     assert '"x": 320' in result["prompt"]
     assert result["summary"]["found"] is True
+
+
+def test_cv2_color_target_hint_uses_explicit_target_color():
+    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+        "target": "track the red cube",
+        "reasoning": "A blue cube is also visible.",
+        "fallback_color": "green",
+    })
+    assert result["found"] is True
+    assert result["source"] == "target"
+    assert result["color"] == "red"
+    assert result["label"] == "red cube"
+    assert result["lower_hsv"] == "170,80,60"
+    assert result["upper_hsv"] == "10,255,255"
+
+
+def test_cv2_color_target_hint_uses_reasoning_when_target_is_vague():
+    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+        "target": "track the cube",
+        "reasoning": "The most visible object is a blue cube near the center.",
+        "fallback_color": "green",
+    })
+    assert result["found"] is True
+    assert result["source"] == "reasoning"
+    assert result["color"] == "blue"
+    assert result["label"] == "blue cube"
+    assert result["lower_hsv"] == "100,60,50"
+    assert result["upper_hsv"] == "130,255,255"
+
+
+def test_cv2_color_target_hint_reads_reasoning_state_url(monkeypatch):
+    fn = _NODE_REGISTRY["CV2ColorTargetHint"]
+
+    def fake_read_reasoning_state_answer(state_url, wait_seconds):
+        assert state_url == "http://127.0.0.1:9200/state.json"
+        assert wait_seconds == 2.5
+        return "I see a yellow cube on the table.", ""
+
+    monkeypatch.setitem(fn.__globals__, "_read_reasoning_state_answer", fake_read_reasoning_state_answer)
+    result = fn({
+        "target": "track the cube",
+        "reasoning_state_url": "http://127.0.0.1:9200/state.json",
+        "reasoning_wait_seconds": 2.5,
+        "fallback_color": "green",
+    })
+    assert result["source"] == "reasoning"
+    assert result["color"] == "yellow"
+    assert result["metadata"]["reasoning_state_used"] is True
+
+
+def test_cv2_color_target_hint_falls_back_without_color():
+    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+        "target": "track the cube",
+        "reasoning": "A cube is visible, but the color is unclear.",
+        "fallback_color": "purple",
+    })
+    assert result["found"] is False
+    assert result["source"] == "fallback"
+    assert result["color"] == "purple"
+    assert result["label"] == "purple cube"
 
 
 def test_stream_status_ready_dashboard():
@@ -397,6 +458,9 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     path = TEMPLATE_DIR / "vision-cv2-cube-local-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
+    assert workflow["node_meta"]["target_prompt"]["type"] == "Text"
+    assert workflow["node_meta"]["target_hint"]["type"] == "CV2ColorTargetHint"
+    assert workflow["node_meta"]["target_hint"]["params"]["reasoning_wait_seconds"] == 12.0
     assert workflow["node_meta"]["live_reason"]["type"] == "VisionReasoningStream"
     assert workflow["node_meta"]["live_reason"]["params"]["model"] == "qwen3-vl:4b"
     assert workflow["node_meta"]["live_reason"]["params"]["max_tokens"] == 4096
@@ -407,6 +471,15 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
         for edge in workflow["edges"]
     }
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
+    assert ("target_prompt", "value", "target_hint", "target") in edges
+    assert ("target_prompt", "value", "live_reason", "prompt") in edges
+    assert ("live_reason", "state_url", "target_hint", "reasoning_state_url") in edges
+    assert ("target_hint", "label", "cv2_stream", "label") in edges
+    assert ("target_hint", "lower_hsv", "cv2_stream", "lower_hsv") in edges
+    assert ("target_hint", "upper_hsv", "cv2_stream", "upper_hsv") in edges
+    assert ("target_hint", "label", "python_export", "label") in edges
+    assert ("target_hint", "lower_hsv", "python_export", "lower_hsv") in edges
+    assert ("target_hint", "upper_hsv", "python_export", "upper_hsv") in edges
     assert ("cv2_stream", "preview", "overlay_out", "image") in edges
     assert ("cv2_stream", "mask", "mask_out", "image") in edges
     assert ("stream", "snapshot_url", "live_reason", "image_url") in edges

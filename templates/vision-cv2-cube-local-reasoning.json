@@ -9,7 +9,7 @@
   },
   "metadata": {
     "template": true,
-    "description": "Start the bundled USB camera, stream raw camera, live CV2 overlay/mask, and live image-first Ollama/Qwen reasoning; CV2 remains a fast color tracker.",
+    "description": "Start the bundled USB camera, stream raw camera, resolve a prompt/model target into HSV, stream live CV2 overlay/mask, and run live image-first Ollama/Qwen reasoning.",
     "color": "#2563eb",
     "required_packages": [
       {
@@ -17,6 +17,7 @@
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
         "node_types": [
           "CV2ColorObjectStream",
+          "CV2ColorTargetHint",
           "CV2ColorObjectTracker",
           "CV2HSVMask",
           "CV2TrackerPythonExport",
@@ -197,6 +198,102 @@
           "auto",
           "raw",
           "compressed"
+        ]
+      }
+    },
+    "target_prompt": {
+      "id": "target_prompt",
+      "type": "Text",
+      "params": {
+        "value": "Track the green cube. If no color is specified, inspect the image and choose the most visible colored cube or object to track. Always mention the target color."
+      },
+      "pos": [
+        740,
+        430
+      ],
+      "inputs": [],
+      "outputs": [
+        "value"
+      ],
+      "input_types": {},
+      "output_types": {
+        "value": "Text"
+      },
+      "input_defaults": {}
+    },
+    "target_hint": {
+      "id": "target_hint",
+      "type": "CV2ColorTargetHint",
+      "params": {
+        "target": "track green cube",
+        "reasoning": "",
+        "reasoning_state_url": "",
+        "reasoning_wait_seconds": 12.0,
+        "fallback_color": "green",
+        "fallback_label": "cube"
+      },
+      "pos": [
+        1120,
+        520
+      ],
+      "inputs": [
+        "target",
+        "reasoning",
+        "reasoning_state_url",
+        "reasoning_wait_seconds",
+        "fallback_color",
+        "fallback_label"
+      ],
+      "outputs": [
+        "target",
+        "color",
+        "label",
+        "lower_hsv",
+        "upper_hsv",
+        "found",
+        "source",
+        "metadata",
+        "report"
+      ],
+      "input_types": {
+        "target": "Text",
+        "reasoning": "Text",
+        "reasoning_state_url": "Text",
+        "reasoning_wait_seconds": "Float",
+        "fallback_color": "Text",
+        "fallback_label": "Text"
+      },
+      "output_types": {
+        "target": "Text",
+        "color": "Text",
+        "label": "Text",
+        "lower_hsv": "Text",
+        "upper_hsv": "Text",
+        "found": "Bool",
+        "source": "Text",
+        "metadata": "Dict",
+        "report": "Text"
+      },
+      "input_defaults": {
+        "target": "track green cube",
+        "reasoning": "",
+        "reasoning_state_url": "",
+        "reasoning_wait_seconds": 12.0,
+        "fallback_color": "green",
+        "fallback_label": "cube"
+      },
+      "input_choices": {
+        "fallback_color": [
+          "black",
+          "blue",
+          "cyan",
+          "green",
+          "orange",
+          "pink",
+          "purple",
+          "red",
+          "white",
+          "yellow"
         ]
       }
     },
@@ -647,6 +744,42 @@
       "to_port": "source_url"
     },
     {
+      "from": "target_prompt",
+      "from_port": "value",
+      "to": "target_hint",
+      "to_port": "target"
+    },
+    {
+      "from": "target_prompt",
+      "from_port": "value",
+      "to": "live_reason",
+      "to_port": "prompt"
+    },
+    {
+      "from": "live_reason",
+      "from_port": "state_url",
+      "to": "target_hint",
+      "to_port": "reasoning_state_url"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "label",
+      "to": "cv2_stream",
+      "to_port": "label"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "lower_hsv",
+      "to": "cv2_stream",
+      "to_port": "lower_hsv"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "upper_hsv",
+      "to": "cv2_stream",
+      "to_port": "upper_hsv"
+    },
+    {
       "from": "cv2_stream",
       "from_port": "preview",
       "to": "overlay_out",
@@ -669,6 +802,24 @@
       "from_port": "source",
       "to": "python_out",
       "to_port": "value"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "label",
+      "to": "python_export",
+      "to_port": "label"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "lower_hsv",
+      "to": "python_export",
+      "to_port": "lower_hsv"
+    },
+    {
+      "from": "target_hint",
+      "from_port": "upper_hsv",
+      "to": "python_export",
+      "to_port": "upper_hsv"
     },
     {
       "from": "stream",

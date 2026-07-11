@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import textwrap
+import time
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,46 @@ from blacknode.node import Any as AnyPort
 from blacknode.node import Bool, Dict, Enum, Float, Image, Int, List, Text, node
 
 _CATEGORY = "CV2"
+_HSV_COLOR_RANGES: dict[str, tuple[tuple[int, int, int], tuple[int, int, int]]] = {
+    "red": ((170, 80, 60), (10, 255, 255)),
+    "orange": ((5, 80, 60), (25, 255, 255)),
+    "yellow": ((20, 80, 80), (35, 255, 255)),
+    "green": ((35, 60, 60), (85, 255, 255)),
+    "cyan": ((85, 60, 60), (100, 255, 255)),
+    "blue": ((100, 60, 50), (130, 255, 255)),
+    "purple": ((130, 50, 50), (160, 255, 255)),
+    "pink": ((145, 50, 80), (175, 255, 255)),
+    "white": ((0, 0, 180), (179, 60, 255)),
+    "black": ((0, 0, 0), (179, 255, 70)),
+}
+_COLOR_ALIASES: dict[str, str] = {
+    "red": "red",
+    "orange": "orange",
+    "yellow": "yellow",
+    "green": "green",
+    "lime": "green",
+    "cyan": "cyan",
+    "turquoise": "cyan",
+    "teal": "cyan",
+    "blue": "blue",
+    "purple": "purple",
+    "violet": "purple",
+    "magenta": "pink",
+    "pink": "pink",
+    "white": "white",
+    "black": "black",
+}
+_OBJECT_WORDS = (
+    "cube",
+    "block",
+    "box",
+    "ball",
+    "bottle",
+    "cup",
+    "marker",
+    "object",
+    "target",
+)
 
 
 def _missing_cv2_outputs() -> dict[str, Any]:
@@ -75,6 +117,156 @@ def _parse_hsv(value: Any, default: tuple[int, int, int]) -> tuple[int, int, int
         max(0, min(255, values[1])),
         max(0, min(255, values[2])),
     )
+
+
+def _format_hsv(value: tuple[int, int, int]) -> str:
+    return ",".join(str(int(part)) for part in value)
+
+
+def _normalize_words(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _find_color(value: Any) -> str:
+    text = _normalize_words(value)
+    if not text:
+        return ""
+    words = set(text.split())
+    for alias, color in _COLOR_ALIASES.items():
+        if alias in words:
+            return color
+    return ""
+
+
+def _find_object_label(value: Any, fallback: str) -> str:
+    text = _normalize_words(value)
+    if text:
+        words = set(text.split())
+        for word in _OBJECT_WORDS:
+            if word in words:
+                return word
+    return fallback.strip() or "object"
+
+
+def _read_reasoning_state_answer(state_url: str, wait_seconds: float) -> tuple[str, str]:
+    url = state_url.strip()
+    if not url:
+        return "", ""
+    deadline = time.monotonic() + max(0.0, wait_seconds)
+    last_error = ""
+    while True:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "BlacknodeCV2TargetHint/0.1"})
+            with urllib.request.urlopen(req, timeout=1.5) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            answer = str(payload.get("answer") or "").strip()
+            report = str(payload.get("report") or "").strip()
+            if answer:
+                return answer, ""
+            last_error = report or "reasoning state has no answer yet"
+        except Exception as exc:  # noqa: BLE001
+            last_error = f"{type(exc).__name__}: {exc}"
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.35)
+    return "", last_error
+
+
+@node(
+    name="CV2ColorTargetHint",
+    category=_CATEGORY,
+    description="Resolve target or reasoning text such as 'track the red cube' into HSV settings for CV2 tracking.",
+    inputs={
+        "target": Text(default="track green cube"),
+        "reasoning": Text(default=""),
+        "reasoning_state_url": Text(default=""),
+        "reasoning_wait_seconds": Float(default=0.0),
+        "fallback_color": Enum(sorted(_HSV_COLOR_RANGES), default="green"),
+        "fallback_label": Text(default="cube"),
+    },
+    outputs={
+        "target": Text,
+        "color": Text,
+        "label": Text,
+        "lower_hsv": Text,
+        "upper_hsv": Text,
+        "found": Bool,
+        "source": Text,
+        "metadata": Dict,
+        "report": Text,
+    },
+)
+def cv2_color_target_hint(ctx: dict) -> dict:
+    target = str(ctx.get("target") or "").strip()
+    reasoning = str(ctx.get("reasoning") or "").strip()
+    reasoning_state_url = str(ctx.get("reasoning_state_url") or "").strip()
+    wait_seconds = max(0.0, float(ctx.get("reasoning_wait_seconds") or 0.0))
+    fallback_color = _find_color(ctx.get("fallback_color")) or "green"
+    fallback_label = str(ctx.get("fallback_label") or "cube").strip() or "cube"
+
+    target_color = _find_color(target)
+    reasoning_color = _find_color(reasoning)
+    state_answer = ""
+    state_error = ""
+    if not target_color and not reasoning_color and reasoning_state_url:
+        state_answer, state_error = _read_reasoning_state_answer(reasoning_state_url, wait_seconds)
+        if state_answer:
+            reasoning = "\n".join(part for part in (reasoning, state_answer) if part)
+            reasoning_color = _find_color(reasoning)
+
+    if target_color:
+        color = target_color
+        source = "target"
+        found = True
+        source_text = target
+    elif reasoning_color:
+        color = reasoning_color
+        source = "reasoning"
+        found = True
+        source_text = reasoning
+    else:
+        color = fallback_color if fallback_color in _HSV_COLOR_RANGES else "green"
+        source = "fallback"
+        found = False
+        source_text = target or reasoning
+
+    label_word = _find_object_label(target, "") or _find_object_label(reasoning, "") or fallback_label
+    label = f"{color} {label_word}".strip()
+    lower, upper = _HSV_COLOR_RANGES[color]
+    resolved_target = target or reasoning or label
+    lower_text = _format_hsv(lower)
+    upper_text = _format_hsv(upper)
+    report_source = f" from {source} text" if found else f" using fallback {fallback_color}"
+    if source == "reasoning" and state_answer:
+        report_source = f" from reasoning state {reasoning_state_url}"
+    elif source == "fallback" and state_error:
+        report_source += f"; reasoning state unavailable: {state_error}"
+    report = f"CV2 target hint OK: tracking {label} with HSV {lower_text}-{upper_text}{report_source}"
+    return {
+        "target": resolved_target,
+        "color": color,
+        "label": label,
+        "lower_hsv": lower_text,
+        "upper_hsv": upper_text,
+        "found": found,
+        "source": source,
+        "metadata": {
+            "target": target,
+            "reasoning": reasoning,
+            "reasoning_state_url": reasoning_state_url,
+            "reasoning_state_error": state_error,
+            "source_text": source_text,
+            "color": color,
+            "label": label,
+            "lower_hsv": lower,
+            "upper_hsv": upper,
+            "source": source,
+            "explicit_color_found": bool(target_color),
+            "reasoning_color_found": bool(reasoning_color),
+            "reasoning_state_used": bool(state_answer),
+        },
+        "report": report,
+    }
 
 
 def _decode_image_bgr(source: Any) -> tuple[Any, str]:
