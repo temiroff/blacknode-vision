@@ -389,9 +389,11 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
     outputs={
         "preview": Image,
         "snapshot": Image,
+        "mask": Image,
         "streaming": Bool,
         "stream_url": Text,
         "snapshot_url": Text,
+        "mask_url": Text,
         "detection_url": Text,
         "stream_id": Text,
         "found": Bool,
@@ -406,9 +408,11 @@ def cv2_color_object_stream(ctx: dict) -> dict:
     empty = {
         "preview": "",
         "snapshot": "",
+        "mask": "",
         "streaming": False,
         "stream_url": "",
         "snapshot_url": "",
+        "mask_url": "",
         "detection_url": "",
         "stream_id": stream_id,
         "found": False,
@@ -455,6 +459,7 @@ def cv2_color_object_stream(ctx: dict) -> dict:
     found = bool(payload.get("found") or detection.get("found"))
     stream_url = str(result.get("stream_url") or "")
     snapshot_url = str(result.get("snapshot_url") or "")
+    mask_url = str(result.get("mask_url") or "")
     detection_url = str(result.get("detection_url") or "")
     report = (
         f"LIVE CV2 STREAM running on {stream_url} from {source_url}; "
@@ -463,9 +468,11 @@ def cv2_color_object_stream(ctx: dict) -> dict:
     return {
         "preview": stream_url,
         "snapshot": snapshot_url,
+        "mask": mask_url,
         "streaming": True,
         "stream_url": stream_url,
         "snapshot_url": snapshot_url,
+        "mask_url": mask_url,
         "detection_url": detection_url,
         "stream_id": stream_id,
         "found": found,

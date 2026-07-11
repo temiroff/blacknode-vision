@@ -65,6 +65,20 @@ def _svg_data(svg: str) -> str:
     return f"data:image/svg+xml;base64,{encoded}"
 
 
+def _image_data_url(image: str) -> tuple[str, str]:
+    """Return (image_data_url, error) for dashboard-safe embedding."""
+    value = image.strip()
+    if not value:
+        return "", ""
+    if value.startswith("data:image/"):
+        return value, ""
+    try:
+        media_type, data, _kind = _image_data_parts(value)
+    except Exception as exc:  # noqa: BLE001
+        return "", f"{type(exc).__name__}: {exc}"
+    return f"data:{media_type};base64,{data}", ""
+
+
 def _normal_provider(value: Any, endpoint_url: str = "") -> str:
     raw = str(value or "openai-compatible").strip().lower().replace("_", "-")
     if raw in {"openai", "openai-compatible", "nvidia", "nim", "openrouter"}:
@@ -227,7 +241,9 @@ def vision_detection_prompt(ctx: dict) -> dict:
         "detections": detections,
     }
     parts = [
-        "You are a robot vision planner using structured CV2 detections.",
+        "You are a robot vision assistant using an attached camera frame plus structured CV2 detections.",
+        "First describe what is visible in the camera frame in plain language.",
+        "Then use the CV2 detections to identify the tracked target, confidence, and next robot action.",
         "Do not invent objects that are not present in the detections.",
     ]
     if context:
@@ -237,7 +253,7 @@ def vision_detection_prompt(ctx: dict) -> dict:
     parts.append("Detection data:")
     parts.append(json.dumps(payload, indent=2, sort_keys=True))
     parts.append(f"Question: {question}")
-    parts.append("Return a concise state summary, confidence, and next robot action.")
+    parts.append("Return: visible scene, tracked target state, confidence, uncertainty, and next robot action.")
     return {
         "prompt": "\n".join(parts),
         "summary": {
@@ -543,6 +559,7 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
     report = str(ctx.get("report") or "").strip()
     title = str(ctx.get("title") or "Blacknode Vision Reasoning").strip()
     image_kind = _image_kind(image)
+    image_data_url, image_error = _image_data_url(image)
     ready = bool(answer) and "FAILED" not in report.upper()
     status = "VLM READY" if ready else "WAITING FOR VLM"
     color = "#18a058" if ready else "#f59e0b"
@@ -551,15 +568,16 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
     answer_lines = _wrap_text(answer or "Cook the VLM node after the camera frame is captured.", width=70, max_lines=12)
     report_lines = _wrap_text(report or "No VLM report yet.", width=70, max_lines=3)
 
-    if image_kind in {"data-url", "url"}:
+    if image_data_url:
         image_svg = (
             f'<image x="36" y="132" width="390" height="292" preserveAspectRatio="xMidYMid meet" '
-            f'href="{html.escape(image, quote=True)}"/>'
+            f'href="{html.escape(image_data_url, quote=True)}"/>'
         )
     else:
+        placeholder = "No captured frame yet" if not image_error else f"Frame unavailable: {_clip(image_error, 44)}"
         image_svg = (
             '<rect x="36" y="132" width="390" height="292" rx="10" fill="#0f172a" stroke="#334155"/>'
-            '<text x="92" y="284" fill="#94a3b8" font-size="18" font-family="Inter, Arial">No captured frame yet</text>'
+            f'<text x="58" y="284" fill="#94a3b8" font-size="18" font-family="Inter, Arial">{html.escape(placeholder)}</text>'
         )
 
     prompt_y = 174
@@ -574,7 +592,7 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
 <text x="36" y="116" fill="#e5edf7" font-size="30" font-weight="800" font-family="Inter, Arial">{html.escape(title)}</text>
 <rect x="36" y="132" width="390" height="292" rx="10" fill="#0b1020" stroke="#334155"/>
 {image_svg}
-<text x="36" y="462" fill="#94a3b8" font-size="16" font-family="Inter, Arial">captured frame: {html.escape(image_kind)}</text>
+<text x="36" y="462" fill="#94a3b8" font-size="16" font-family="Inter, Arial">captured frame: {html.escape(image_kind if not image_error else 'unavailable')}</text>
 <text x="460" y="150" fill="#94a3b8" font-size="16" font-weight="800" font-family="Inter, Arial">PROMPT</text>
 {_svg_multiline_text(prompt_lines, x=460, y=prompt_y, fill="#dbeafe", size=17, weight=500)}
 <text x="460" y="{answer_y - 24}" fill="#94a3b8" font-size="16" font-weight="800" font-family="Inter, Arial">VISIBLE REASONING</text>
@@ -588,6 +606,8 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
         "summary": {
             "ready": ready,
             "image_kind": image_kind,
+            "image_embedded": bool(image_data_url),
+            "image_error": image_error,
             "answer_chars": len(answer),
             "report": report,
         },

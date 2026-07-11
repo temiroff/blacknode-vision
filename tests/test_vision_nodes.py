@@ -69,6 +69,7 @@ def test_detection_prompt_summarizes_cv2_output():
         "question": "Should the robot move left or right?",
     })
     assert "CV2 detections" in result["prompt"]
+    assert "First describe what is visible" in result["prompt"]
     assert '"x": 320' in result["prompt"]
     assert result["summary"]["found"] is True
 
@@ -114,6 +115,26 @@ def test_reasoning_dashboard_includes_image_and_answer():
     assert "VISIBLE REASONING" in svg
     assert "Summary:" in svg
     assert "data:image/jpeg;base64,abc" in svg
+
+
+def test_reasoning_dashboard_inlines_url_image(monkeypatch):
+    fn = _NODE_REGISTRY["VisionReasoningDashboard"]
+
+    def fake_image_data_parts(image):
+        assert image == "http://127.0.0.1:9100/snapshot.jpg"
+        return "image/jpeg", "abc123", "url"
+
+    monkeypatch.setitem(fn.__globals__, "_image_data_parts", fake_image_data_parts)
+    result = fn({
+        "image": "http://127.0.0.1:9100/snapshot.jpg",
+        "prompt": "Describe what the robot sees.",
+        "answer": "A cube is visible on the table.",
+        "report": "VLM describe OK via test-model",
+    })
+    svg = base64.b64decode(result["dashboard"].split(",", 1)[1]).decode("utf-8")
+    assert 'href="data:image/jpeg;base64,abc123"' in svg
+    assert "http://127.0.0.1:9100/snapshot.jpg" not in svg
+    assert result["summary"]["image_embedded"] is True
 
 
 def test_vlm_describe_ollama_text_only(monkeypatch):
@@ -257,6 +278,7 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
             "ok": True,
             "stream_url": "http://127.0.0.1:9100/stream.mjpg",
             "snapshot_url": "http://127.0.0.1:9100/snapshot.jpg",
+            "mask_url": "http://127.0.0.1:9100/mask.png",
             "detection_url": "http://127.0.0.1:9100/detection.json",
             "detection": {
                 "found": True,
@@ -276,6 +298,7 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
     })
     assert result["streaming"] is True
     assert result["preview"] == "http://127.0.0.1:9100/stream.mjpg"
+    assert result["mask"] == "http://127.0.0.1:9100/mask.png"
     assert result["found"] is True
     assert result["detection"]["center"]["x"] == 40
     assert calls[0]["source_url"] == "http://127.0.0.1:9000/snapshot.jpg"
@@ -331,10 +354,13 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
     assert workflow["node_meta"]["local_reason"]["params"]["model"] == "qwen3-vl:4b"
     assert workflow["node_meta"]["local_reason"]["params"]["max_tokens"] == 4096
+    assert "First describe the actual attached camera frame" in workflow["node_meta"]["local_reason"]["input_defaults"]["system"]
+    assert "Describe what you see" in workflow["node_meta"]["detection_prompt"]["params"]["question"]
     edges = {
         (edge["from"], edge["from_port"], edge["to"], edge["to_port"])
         for edge in workflow["edges"]
     }
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
     assert ("cv2_stream", "preview", "overlay_out", "image") in edges
+    assert ("cv2_stream", "mask", "mask_out", "image") in edges
     assert ("cv2_stream", "snapshot", "local_reason", "image") in edges

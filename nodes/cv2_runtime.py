@@ -144,6 +144,7 @@ def start_color_stream(
         "source_url": source_url,
         "stream_url": f"{base_url}/stream.mjpg",
         "snapshot_url": f"{base_url}/snapshot.jpg",
+        "mask_url": f"{base_url}/mask.png",
         "detection_url": detection_url,
         "label": label,
     }
@@ -152,6 +153,7 @@ def start_color_stream(
         "stream_id": stream_id,
         "stream_url": _STREAMS[stream_id]["stream_url"],
         "snapshot_url": _STREAMS[stream_id]["snapshot_url"],
+        "mask_url": _STREAMS[stream_id]["mask_url"],
         "detection_url": detection_url,
         "detection": detection,
         "port": selected_port,
@@ -182,6 +184,7 @@ def runtime_status() -> dict[str, Any]:
             "source_url": item.get("source_url", ""),
             "stream_url": item.get("stream_url", ""),
             "snapshot_url": item.get("snapshot_url", ""),
+            "mask_url": item.get("mask_url", ""),
             "detection_url": item.get("detection_url", ""),
             "label": item.get("label", ""),
         })

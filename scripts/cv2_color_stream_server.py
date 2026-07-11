@@ -19,6 +19,7 @@ class SharedState:
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.jpeg: bytes = b""
+        self.mask_png: bytes = b""
         self.detection: dict[str, Any] = {
             "ok": False,
             "found": False,
@@ -31,6 +32,10 @@ class SharedState:
     def jpeg_snapshot(self) -> bytes:
         with self.lock:
             return self.jpeg
+
+    def mask_snapshot(self) -> bytes:
+        with self.lock:
+            return self.mask_png
 
     def detection_snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -185,6 +190,9 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
             ok, encoded = cv2.imencode(".jpg", overlay, [int(cv2.IMWRITE_JPEG_QUALITY), int(args.jpeg_quality)])
             if not ok:
                 raise RuntimeError("OpenCV JPEG encode failed")
+            mask_ok, encoded_mask = cv2.imencode(".png", mask)
+            if not mask_ok:
+                raise RuntimeError("OpenCV mask PNG encode failed")
             detection = detections[0] if detections else {"found": False, "label": args.label}
             report = (
                 f"tracking {args.label}: found {len(detections)} candidate(s)"
@@ -193,6 +201,7 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
             )
             with state.lock:
                 state.jpeg = encoded.tobytes()
+                state.mask_png = encoded_mask.tobytes()
                 state.detection = {
                     "ok": True,
                     "found": bool(detections),
@@ -242,6 +251,18 @@ def make_handler(state: SharedState, *, max_fps: float):
                 self.send_header("Content-Length", str(len(jpeg)))
                 self.end_headers()
                 self.wfile.write(jpeg)
+                return
+            if self.path.startswith("/mask.png"):
+                mask_png = state.mask_snapshot()
+                if not mask_png:
+                    self.send_error(503, "no mask yet")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(mask_png)))
+                self.end_headers()
+                self.wfile.write(mask_png)
                 return
             if self.path.startswith("/stream.mjpg"):
                 self.send_response(200)

@@ -64,7 +64,7 @@ rotation:=0
 | `VisionReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
-| `CV2ColorObjectStream` | Starts a live MJPEG overlay stream from a camera snapshot URL and exposes current detection JSON |
+| `CV2ColorObjectStream` | Starts a live MJPEG overlay stream from a camera snapshot URL and exposes current mask, snapshot, and detection JSON |
 | `CV2TrackerPythonExport` | Generates a standalone OpenCV tracker script for robot deployment experiments |
 
 ## Templates
@@ -152,9 +152,10 @@ upper_hsv: 85,255,255
 
 Change those values for red, blue, or other cube colors.
 `CV2ColorObjectStream` keeps an overlay preview live and exposes the latest
-detection at `/detection.json`; `CV2ColorObjectTracker` is still useful for
-single-frame tests and exports. Both return structured detections, so the same
-prototype can drive a local LLM, robot control node, dashboard, or Python export.
+mask at `/mask.png`, snapshot at `/snapshot.jpg`, and detection at
+`/detection.json`; `CV2ColorObjectTracker` is still useful for single-frame
+tests and exports. Both return structured detections, so the same prototype can
+drive a local LLM, robot control node, dashboard, or Python export.
 
 ## Development
 
