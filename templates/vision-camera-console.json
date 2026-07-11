@@ -9,7 +9,7 @@
   },
   "metadata": {
     "template": true,
-    "description": "Start any ROS 2 camera executable, stream its image topic, and show a live vision status dashboard. Fill ROS2Run package/executable for your camera driver.",
+    "description": "Start the bundled Blacknode USB camera ROS 2 node, stream its image topic, and show a live vision status dashboard.",
     "color": "#18a058",
     "required_packages": [
       {"name": "blacknode-vision", "git_url": "https://github.com/temiroff/blacknode-vision.git", "node_types": ["VisionStreamStatus"]},
@@ -34,9 +34,9 @@
       "params": {
         "action": "start",
         "run_id": "vision_camera",
-        "package": "",
-        "executable": "",
-        "arguments": "",
+        "package": "blacknode_usb_camera",
+        "executable": "usb_camera",
+        "arguments": "--ros-args -p device:=0 -p image_topic:=/camera/image_raw -p width:=640 -p height:=480 -p hz:=30.0",
         "expected_topic": "/camera/image_raw",
         "wait_seconds": 10.0
       },
@@ -57,9 +57,9 @@
       "input_defaults": {
         "action": "start",
         "run_id": "vision_camera",
-        "package": "",
-        "executable": "",
-        "arguments": "",
+        "package": "blacknode_usb_camera",
+        "executable": "usb_camera",
+        "arguments": "--ros-args -p device:=0 -p image_topic:=/camera/image_raw -p width:=640 -p height:=480 -p hz:=30.0",
         "expected_topic": "/camera/image_raw",
         "wait_seconds": 10.0
       },

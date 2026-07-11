@@ -28,6 +28,15 @@ def test_templates_validate():
         assert report.ok, f"{path.name}: {report.to_dict()}"
 
 
+def test_camera_console_defaults_to_bundled_usb_camera():
+    path = TEMPLATE_DIR / "vision-camera-console.json"
+    workflow = json.loads(path.read_text(encoding="utf-8"))
+    params = workflow["node_meta"]["camera_run"]["params"]
+    assert params["package"] == "blacknode_usb_camera"
+    assert params["executable"] == "usb_camera"
+    assert "/camera/image_raw" in params["arguments"]
+
+
 def test_frame_prompt_summarizes_context():
     result = _NODE_REGISTRY["VisionFramePrompt"]({
         "image": "data:image/png;base64,abc",

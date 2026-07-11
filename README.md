@@ -5,8 +5,8 @@ Vision workflows for [Blacknode](https://github.com/temiroff/Blacknode).
 This is a separate Blacknode extension package. It does not replace
 `blacknode-ros2`; it builds on it. ROS 2 handles camera transport, topic
 inspection, snapshots, and streams. `blacknode-vision` adds vision-specific
-workflow pieces: camera consoles, frame prompts, stream dashboards, and optional
-VLM inspection.
+workflow pieces: a bundled generic USB camera ROS 2 node, camera consoles,
+frame prompts, stream dashboards, and optional VLM inspection.
 
 ## Install
 
@@ -22,9 +22,37 @@ This package expects `blacknode-ros2` when using the ROS camera templates:
 blacknode packages install https://github.com/temiroff/blacknode-ros2.git
 ```
 
+Build the bundled ROS 2 camera package:
+
+```bash
+blacknode packages setup blacknode-vision
+```
+
+If your Blacknode build does not run package setup scripts yet, run
+`bash packages/blacknode-vision/scripts/setup.sh` from the Blacknode repo root.
+
 Restart Blacknode, or press **Reload** in the editor's Packages tab.
 
 ## Nodes
+
+### ROS 2 executables
+
+| Package | Executable | What it does |
+|---|---|---|
+| `blacknode_usb_camera` | `usb_camera` | Publishes a local USB camera to `/camera/image_raw` |
+
+The USB camera node accepts ROS parameters:
+
+```text
+device:=0
+image_topic:=/camera/image_raw
+width:=640
+height:=480
+hz:=30.0
+rotation:=0
+```
+
+### Blacknode nodes
 
 | Node | What it does |
 |---|---|
@@ -34,7 +62,7 @@ Restart Blacknode, or press **Reload** in the editor's Packages tab.
 
 ## Templates
 
-- **Blacknode Vision Camera Console** — start any ROS 2 camera executable,
+- **Blacknode Vision Camera Console** — start `blacknode_usb_camera usb_camera`,
   stream `/camera/image_raw`, and show a live status dashboard.
 - **Blacknode Vision Frame VLM** — capture one ROS 2 camera frame, show it on
   the canvas, and send it to a VLM endpoint.
@@ -50,13 +78,16 @@ source /path/to/ros2_ws/install/setup.bash
 ./start.sh
 ```
 
-Then load **Blacknode Vision Camera Console** and fill `ROS2Run`:
+Then load **Blacknode Vision Camera Console**. It defaults to:
 
 ```text
-package: your_camera_package
-executable: your_camera_executable
+package: blacknode_usb_camera
+executable: usb_camera
 expected_topic: /camera/image_raw
 ```
+
+For a different camera index, edit `ROS2Run.arguments`, for example
+`-p device:=1`.
 
 ## VLM endpoint
 
