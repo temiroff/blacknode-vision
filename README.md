@@ -142,7 +142,9 @@ local VLM, connect the camera snapshot image into `VisionVLMDescribe.image`.
 Live reasoning uses a snapshot URL for inference, not the MJPEG stream itself.
 `VisionReasoningStream` periodically samples the current snapshot and serves an
 MJPEG reasoning dashboard, so the visible panel keeps updating while the camera
-and tracker streams run.
+and tracker streams run. The CV2 local-reasoning template defaults to
+`interval_seconds: 3.0` and dashboard `max_fps: 4.0`; actual reasoning updates
+are still limited by how fast the local VLM returns an answer.
 
 Changing `interval_seconds`, model, or FPS on an already-running reasoning
 stream requires cooking the node again. The current process is started with the
@@ -159,12 +161,20 @@ upper_hsv: 85,255,255
 ```
 
 In the live reasoning template, the target prompt goes to the VLM first, not
-directly to CV2. Connect `VisionReasoningStream.state_url` into
-`CV2ColorTargetHint.reasoning_state_url` and `CV2ColorObjectStream.reasoning_state_url`.
-The model answer chooses the target color, then the CV2 stream updates the HSV
-range while it is running. For non-VLM workflows, `CV2ColorTargetHint.target`
-or `CV2ColorObjectStream.target` can still accept direct text such as
-`track red cube`.
+directly to CV2:
+
+```text
+Text target prompt
+  -> VisionReasoningStream
+  -> CV2ColorObjectStream.reasoning_state_url
+```
+
+The model answer chooses the target color, then the CV2 stream updates its HSV
+range while it is running. The template leaves `CV2ColorObjectStream.target`
+and `fallback_color` empty so the tracker does not silently lock onto a
+hard-coded color before the VLM answers. For non-VLM workflows,
+`CV2ColorTargetHint.target` or `CV2ColorObjectStream.target` can still accept
+direct text such as `track red cube`.
 
 The CV2 tracker is still a fast color-threshold tracker, so it does not detect
 every cube automatically by shape. The VLM/reasoning side chooses what color to
