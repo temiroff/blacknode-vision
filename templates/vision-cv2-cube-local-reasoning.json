@@ -17,7 +17,6 @@
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
         "node_types": [
           "CV2ColorObjectStream",
-          "CV2ColorTargetHint",
           "CV2ColorObjectTracker",
           "CV2HSVMask",
           "VisionReasoningStream"
@@ -220,82 +219,6 @@
       },
       "input_defaults": {}
     },
-    "target_hint": {
-      "id": "target_hint",
-      "type": "CV2ColorTargetHint",
-      "params": {
-        "target": "",
-        "reasoning": "",
-        "reasoning_state_url": "",
-        "reasoning_wait_seconds": 0.0,
-        "fallback_color": "green",
-        "fallback_label": "cube"
-      },
-      "pos": [
-        1120,
-        520
-      ],
-      "inputs": [
-        "target",
-        "reasoning",
-        "reasoning_state_url",
-        "reasoning_wait_seconds",
-        "fallback_color",
-        "fallback_label"
-      ],
-      "outputs": [
-        "target",
-        "color",
-        "label",
-        "lower_hsv",
-        "upper_hsv",
-        "found",
-        "source",
-        "metadata",
-        "report"
-      ],
-      "input_types": {
-        "target": "Text",
-        "reasoning": "Text",
-        "reasoning_state_url": "Text",
-        "reasoning_wait_seconds": "Float",
-        "fallback_color": "Text",
-        "fallback_label": "Text"
-      },
-      "output_types": {
-        "target": "Text",
-        "color": "Text",
-        "label": "Text",
-        "lower_hsv": "Text",
-        "upper_hsv": "Text",
-        "found": "Bool",
-        "source": "Text",
-        "metadata": "Dict",
-        "report": "Text"
-      },
-      "input_defaults": {
-        "target": "",
-        "reasoning": "",
-        "reasoning_state_url": "",
-        "reasoning_wait_seconds": 0.0,
-        "fallback_color": "green",
-        "fallback_label": "cube"
-      },
-      "input_choices": {
-        "fallback_color": [
-          "black",
-          "blue",
-          "cyan",
-          "green",
-          "orange",
-          "pink",
-          "purple",
-          "red",
-          "white",
-          "yellow"
-        ]
-      }
-    },
     "cv2_stream": {
       "id": "cv2_stream",
       "type": "CV2ColorObjectStream",
@@ -304,7 +227,7 @@
         "stream_id": "cube_tracker",
         "target": "",
         "reasoning_state_url": "",
-        "fallback_color": "green",
+        "fallback_color": "",
         "target_update_seconds": 2.0,
         "label": "cube",
         "lower_hsv": "35,60,60",
@@ -405,7 +328,7 @@
         "source_url": "",
         "target": "",
         "reasoning_state_url": "",
-        "fallback_color": "green",
+        "fallback_color": "",
         "target_update_seconds": 2.0,
         "label": "cube",
         "lower_hsv": "35,60,60",
@@ -703,32 +626,8 @@
     {
       "from": "live_reason",
       "from_port": "state_url",
-      "to": "target_hint",
-      "to_port": "reasoning_state_url"
-    },
-    {
-      "from": "live_reason",
-      "from_port": "state_url",
       "to": "cv2_stream",
       "to_port": "reasoning_state_url"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "label",
-      "to": "cv2_stream",
-      "to_port": "label"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "lower_hsv",
-      "to": "cv2_stream",
-      "to_port": "lower_hsv"
-    },
-    {
-      "from": "target_hint",
-      "from_port": "upper_hsv",
-      "to": "cv2_stream",
-      "to_port": "upper_hsv"
     },
     {
       "from": "cv2_stream",

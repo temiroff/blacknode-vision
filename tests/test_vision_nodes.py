@@ -467,11 +467,10 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     workflow = json.loads(path.read_text(encoding="utf-8"))
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
     assert workflow["node_meta"]["target_prompt"]["type"] == "Text"
-    assert workflow["node_meta"]["target_hint"]["type"] == "CV2ColorTargetHint"
     assert "green cube" not in workflow["node_meta"]["target_prompt"]["params"]["value"].lower()
-    assert workflow["node_meta"]["target_hint"]["params"]["target"] == ""
-    assert workflow["node_meta"]["target_hint"]["params"]["reasoning_wait_seconds"] == 0.0
+    assert "target_hint" not in workflow["node_meta"]
     assert "python_export" not in workflow["node_meta"]
+    assert workflow["node_meta"]["cv2_stream"]["params"]["fallback_color"] == ""
     assert workflow["node_meta"]["live_reason"]["type"] == "VisionReasoningStream"
     assert workflow["node_meta"]["live_reason"]["params"]["model"] == "qwen3-vl:4b"
     assert workflow["node_meta"]["live_reason"]["params"]["max_tokens"] == 4096
@@ -485,13 +484,8 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     }
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
     assert ("target_prompt", "value", "live_reason", "prompt") in edges
-    assert ("live_reason", "state_url", "target_hint", "reasoning_state_url") in edges
     assert ("live_reason", "state_url", "cv2_stream", "reasoning_state_url") in edges
-    assert ("target_prompt", "value", "target_hint", "target") not in edges
     assert ("target_prompt", "value", "cv2_stream", "target") not in edges
-    assert ("target_hint", "label", "cv2_stream", "label") in edges
-    assert ("target_hint", "lower_hsv", "cv2_stream", "lower_hsv") in edges
-    assert ("target_hint", "upper_hsv", "cv2_stream", "upper_hsv") in edges
     assert ("cv2_stream", "preview", "overlay_out", "image") in edges
     assert ("cv2_stream", "mask", "mask_out", "image") in edges
     assert ("stream", "snapshot_url", "live_reason", "image_url") in edges
