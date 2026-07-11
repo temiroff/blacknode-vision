@@ -1,4 +1,5 @@
 """blacknode-vision package contracts."""
+import base64
 import json
 from pathlib import Path
 
@@ -59,6 +60,24 @@ def test_stream_status_ready_dashboard():
     assert result["ready"] is True
     assert result["dashboard"].startswith("data:image/svg+xml;base64,")
     assert "LIVE" in result["report"]
+
+
+def test_stream_status_wraps_long_dashboard_text():
+    long_report = (
+        "ROS 2 run process running: blacknode_usb_camera usb_camera; "
+        "/camera/image_raw is discoverable via native backend with a long status message"
+    )
+    result = _NODE_REGISTRY["VisionStreamStatus"]({
+        "camera_topic": "/camera/image_raw",
+        "stream_url": "http://127.0.0.1:12345/stream.mjpg?with=a-long-query-string-that-would-overflow",
+        "streaming": True,
+        "run_report": long_report,
+        "stream_report": long_report,
+    })
+    svg = base64.b64decode(result["dashboard"].split(",", 1)[1]).decode("utf-8")
+    assert "<tspan" in svg
+    assert 'height="380"' not in svg
+    assert "/camera/image_raw is discoverable" in svg
 
 
 def test_vlm_describe_requires_image():

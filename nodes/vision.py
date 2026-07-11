@@ -10,6 +10,7 @@ import base64
 import html
 import json
 import os
+import textwrap
 import urllib.error
 import urllib.request
 from typing import Any
@@ -34,6 +35,25 @@ def _clip(value: Any, limit: int = 120) -> str:
     if len(text) > limit:
         return text[: limit - 3] + "..."
     return text
+
+
+def _wrap_text(value: Any, width: int = 68, max_lines: int = 3) -> list[str]:
+    text = " ".join(str(value or "").split())
+    if not text:
+        return [""]
+    lines = textwrap.wrap(
+        text,
+        width=max(12, width),
+        break_long_words=True,
+        break_on_hyphens=False,
+    ) or [text]
+    if len(lines) <= max_lines:
+        return lines
+    kept = lines[:max_lines]
+    kept[-1] = _clip(kept[-1], max(8, width - 3))
+    if not kept[-1].endswith("..."):
+        kept[-1] = kept[-1][: max(0, width - 3)].rstrip() + "..."
+    return kept
 
 
 def _svg_data(svg: str) -> str:
@@ -115,17 +135,31 @@ def vision_stream_status(ctx: dict) -> dict:
     rows = [
         ("topic", topic),
         ("stream", stream_url or "not available"),
-        ("run", _clip(run_report, 150) or "no run report"),
-        ("image", _clip(stream_report, 150) or "no stream report"),
+        ("run", run_report or "no run report"),
+        ("image", stream_report or "no stream report"),
     ]
-    row_svg = "\n".join(
-        f'<text x="36" y="{150 + index * 42}" fill="#9aa4b2" font-size="18">{html.escape(label)}</text>'
-        f'<text x="150" y="{150 + index * 42}" fill="#e5edf7" font-size="18">{html.escape(value)}</text>'
-        for index, (label, value) in enumerate(rows)
-    )
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360">
-<rect width="900" height="360" rx="18" fill="#111827"/>
-<rect x="24" y="24" width="852" height="312" rx="14" fill="#162033" stroke="#263449"/>
+    row_parts = []
+    y = 154
+    for label, value in rows:
+        lines = _wrap_text(value, width=66, max_lines=3)
+        row_parts.append(
+            f'<text x="36" y="{y}" fill="#9aa4b2" font-size="18" font-family="Inter, Arial">'
+            f"{html.escape(label)}</text>"
+        )
+        tspans = "".join(
+            f'<tspan x="150" dy="{0 if index == 0 else 22}">{html.escape(line)}</tspan>'
+            for index, line in enumerate(lines)
+        )
+        row_parts.append(
+            f'<text x="150" y="{y}" fill="#e5edf7" font-size="17" font-family="Inter, Arial">{tspans}</text>'
+        )
+        y += max(46, 24 * len(lines) + 18)
+    height = max(380, y + 42)
+    inner_height = height - 48
+    row_svg = "\n".join(row_parts)
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}" viewBox="0 0 900 {height}">
+<rect width="900" height="{height}" rx="18" fill="#111827"/>
+<rect x="24" y="24" width="852" height="{inner_height}" rx="14" fill="#162033" stroke="#263449"/>
 <circle cx="58" cy="72" r="12" fill="{color}"/>
 <text x="82" y="79" fill="{color}" font-size="24" font-weight="800" font-family="Inter, Arial">{status}</text>
 <text x="36" y="118" fill="#e5edf7" font-size="30" font-weight="800" font-family="Inter, Arial">Blacknode Vision Stream</text>
