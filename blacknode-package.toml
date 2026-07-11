@@ -1,7 +1,7 @@
 [package]
 name = "blacknode-vision"
 version = "0.1.0"
-description = "Vision workflows for ROS 2 cameras, live previews, frame prompts, and VLM inspection."
+description = "Robot vision workflows for ROS 2 cameras, live VLM reasoning, OpenCV tracking, and stream dashboards."
 requires-blacknode = ">=0.1.0"
 
 [categories]
