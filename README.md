@@ -39,7 +39,10 @@ Restart Blacknode, or press **Reload** in the editor's Packages tab.
 - **Blacknode Vision Frame VLM** — capture one ROS 2 camera frame, show it on
   the canvas, and send it to a VLM endpoint.
 
-For your local camera workspace, start Blacknode from a sourced ROS shell:
+For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
+auto-sources a ROS workspace when it finds exactly one `ros2_ws/install/setup.bash`.
+If you have multiple ROS workspaces, source the one you want before starting
+Blacknode so the overlay order is explicit:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
