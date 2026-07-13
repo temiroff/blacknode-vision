@@ -1,5 +1,6 @@
 """blacknode-vision package contracts."""
 import base64
+import importlib.util
 import json
 from pathlib import Path
 
@@ -445,6 +446,31 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
     assert calls[0]["target_text"] == "track the red cube"
     assert calls[0]["reasoning_state_url"] == "http://127.0.0.1:9200/state.json"
     assert calls[0]["target_update_seconds"] == 2.0
+    assert calls[0]["show_follow_guides"] is True
+    assert calls[0]["follow_target_x"] == 0.4
+    assert calls[0]["follow_deadband"] == 0.12
+
+
+def test_cv2_follow_guide_reports_visible_direction():
+    script = TEMPLATE_DIR.parent / "scripts" / "cv2_color_stream_server.py"
+    spec = importlib.util.spec_from_file_location("cv2_color_stream_server_test", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    frame = module.np.zeros((300, 640, 3), dtype=module.np.uint8)
+    detection = {
+        "center": {"x": 455, "y": 120},
+        "bbox": {"x": 430, "y": 90, "width": 50, "height": 60},
+        "area": 2000.0,
+    }
+
+    _overlay, guide = module.draw_overlay(
+        frame, [detection], "cube", show_follow_guides=True, follow_target_x=0.4, follow_deadband=0.12,
+    )
+
+    assert guide["visible"] is True
+    assert guide["target_x_pixels"] == 256
+    assert guide["zone"] == "RIGHT"
+    assert guide["command"] == "MOVE RIGHT"
 
 
 def test_cv2_color_object_stream_stops_runtime(monkeypatch):
@@ -565,8 +591,11 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert workflow["node_meta"]["follow_cube"]["params"]["joint"] == "shoulder_pan"
     assert workflow["node_meta"]["follow_cube"]["params"]["armed"] is False
     assert workflow["node_meta"]["follow_cube"]["params"]["frame_width"] == 640
-    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.16
+    assert workflow["node_meta"]["follow_cube"]["params"]["target_x"] == 0.4
+    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.12
     assert workflow["node_meta"]["follow_cube"]["params"]["max_step"] == 2.0
+    assert workflow["node_meta"]["cv2_stream"]["params"]["show_follow_guides"] is True
+    assert workflow["node_meta"]["cv2_stream"]["params"]["follow_target_x"] == 0.4
     assert "shoulder_pan_index" not in workflow["node_meta"]
     assert ("joint_state", "names", "shoulder_pan_index", "items") not in edges
     assert ("shoulder_pan_index", "value", "follow_cube", "joint") not in edges
@@ -622,8 +651,11 @@ def test_cube_rosbridge_template_uses_rosbridge_follow_nodes():
     assert workflow["node_meta"]["follow_cube"]["params"]["host"] == "127.0.0.1"
     assert workflow["node_meta"]["follow_cube"]["params"]["port"] == 9090
     assert workflow["node_meta"]["follow_cube"]["params"]["frame_width"] == 640
-    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.16
+    assert workflow["node_meta"]["follow_cube"]["params"]["target_x"] == 0.4
+    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.12
     assert workflow["node_meta"]["follow_cube"]["params"]["max_step"] == 2.0
+    assert workflow["node_meta"]["cv2_stream"]["params"]["show_follow_guides"] is True
+    assert workflow["node_meta"]["cv2_stream"]["params"]["follow_target_x"] == 0.4
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
     assert ("cv2_stream", "detection", "follow_cube", "detection") in edges
     assert ("cv2_stream", "detection_url", "follow_cube", "detection_url") in edges

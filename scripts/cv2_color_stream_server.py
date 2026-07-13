@@ -59,6 +59,9 @@ CONFIG_FIELDS = {
     "reasoning_state_url",
     "fallback_color",
     "target_update_seconds",
+    "show_follow_guides",
+    "follow_target_x",
+    "follow_deadband",
     "min_area",
     "max_detections",
     "blur",
@@ -143,6 +146,9 @@ def initial_config(args: argparse.Namespace) -> dict[str, Any]:
         "reasoning_state_url": args.reasoning_state_url,
         "fallback_color": args.fallback_color,
         "target_update_seconds": args.target_update_seconds,
+        "show_follow_guides": bool_value(args.show_follow_guides, True),
+        "follow_target_x": args.follow_target_x,
+        "follow_deadband": args.follow_deadband,
         "min_area": args.min_area,
         "max_detections": args.max_detections,
         "blur": args.blur,
@@ -472,18 +478,64 @@ def tracking_status_text(target: dict[str, Any], lower: tuple[int, int, int], up
     return f"mode={mode} source={source} color={color} hsv={format_hsv(lower)}-{format_hsv(upper)}"
 
 
-def draw_overlay(frame: Any, detections: list[dict[str, Any]], label: str, status: str = "") -> Any:
+def draw_overlay(
+    frame: Any,
+    detections: list[dict[str, Any]],
+    label: str,
+    status: str = "",
+    *,
+    show_follow_guides: bool = True,
+    follow_target_x: float = 0.4,
+    follow_deadband: float = 0.12,
+) -> tuple[Any, dict[str, Any]]:
     overlay = frame.copy()
     image_h, image_w = overlay.shape[:2]
-    left_boundary = int(image_w / 3)
-    center_line = int(image_w / 2)
-    right_boundary = int(image_w * 2 / 3)
-    cv2.line(overlay, (left_boundary, 38), (left_boundary, image_h), (245, 158, 11), 1)
-    cv2.line(overlay, (center_line, 38), (center_line, image_h), (229, 237, 247), 2)
-    cv2.line(overlay, (right_boundary, 38), (right_boundary, image_h), (245, 158, 11), 1)
-    cv2.putText(overlay, "LEFT", (12, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (245, 158, 11), 1, cv2.LINE_AA)
-    cv2.putText(overlay, "CENTER", (center_line - 30, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (229, 237, 247), 1, cv2.LINE_AA)
-    cv2.putText(overlay, "RIGHT", (right_boundary + 8, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (245, 158, 11), 1, cv2.LINE_AA)
+    target_x = max(0.0, min(1.0, float(follow_target_x)))
+    deadband = max(0.0, min(0.5, float(follow_deadband)))
+    left_fraction = max(0.0, target_x - deadband)
+    right_fraction = min(1.0, target_x + deadband)
+    left_boundary = int(image_w * left_fraction)
+    target_line = int(image_w * target_x)
+    right_boundary = int(image_w * right_fraction)
+    center_x = detections[0]["center"]["x"] if detections else None
+    if center_x is None:
+        command = "NO TARGET"
+        zone = "NONE"
+    elif center_x < left_boundary:
+        command = "MOVE LEFT"
+        zone = "LEFT"
+    elif center_x > right_boundary:
+        command = "MOVE RIGHT"
+        zone = "RIGHT"
+    else:
+        command = "HOLD"
+        zone = "CENTER"
+    guide = {
+        "visible": bool(show_follow_guides),
+        "target_x": target_x,
+        "deadband": deadband,
+        "left_x": left_boundary,
+        "target_x_pixels": target_line,
+        "right_x": right_boundary,
+        "zone": zone,
+        "command": command,
+    }
+    if show_follow_guides:
+        cv2.line(overlay, (left_boundary, 38), (left_boundary, image_h), (245, 158, 11), 1)
+        cv2.line(overlay, (target_line, 38), (target_line, image_h), (229, 237, 247), 2)
+        cv2.line(overlay, (right_boundary, 38), (right_boundary, image_h), (245, 158, 11), 1)
+        cv2.rectangle(overlay, (0, max(0, image_h - 36)), (image_w, image_h), (15, 23, 42), -1)
+        command_color = (34, 197, 94) if command == "HOLD" else (245, 158, 11)
+        cv2.putText(
+            overlay,
+            f"COMMAND: {command}  |  LEFT < {left_fraction:.0%}  HOLD {left_fraction:.0%}-{right_fraction:.0%}  RIGHT > {right_fraction:.0%}",
+            (12, image_h - 12),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.52,
+            command_color,
+            1,
+            cv2.LINE_AA,
+        )
     if status:
         cv2.rectangle(overlay, (0, 0), (overlay.shape[1], 38), (15, 23, 42), -1)
         cv2.putText(
@@ -525,7 +577,7 @@ def draw_overlay(frame: Any, detections: list[dict[str, Any]], label: str, statu
             2,
             cv2.LINE_AA,
         )
-    return overlay
+    return overlay, guide
 
 
 def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
@@ -591,7 +643,15 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
                 max_detections=int(cfg.max_detections),
             )
             status = tracking_status_text(target, lower, upper)
-            overlay = draw_overlay(frame, detections, label, status=status)
+            overlay, follow_guide = draw_overlay(
+                frame,
+                detections,
+                label,
+                status=status,
+                show_follow_guides=bool_value(cfg.show_follow_guides, True),
+                follow_target_x=float(cfg.follow_target_x),
+                follow_deadband=float(cfg.follow_deadband),
+            )
             jpeg_quality = max(1, min(100, int(cfg.jpeg_quality)))
             ok, encoded = cv2.imencode(".jpg", overlay, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
             if not ok:
@@ -622,6 +682,7 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
                     "found": bool(detections),
                     "frame_width": int(frame.shape[1]),
                     "frame_height": int(frame.shape[0]),
+                    "follow_guide": follow_guide,
                     "detection": detection,
                     "detections": detections,
                     "lower_hsv": lower,
@@ -785,6 +846,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reasoning-state-url", default="")
     parser.add_argument("--fallback-color", default="")
     parser.add_argument("--target-update-seconds", type=float, default=2.0)
+    parser.add_argument("--show-follow-guides", default="true")
+    parser.add_argument("--follow-target-x", type=float, default=0.4)
+    parser.add_argument("--follow-deadband", type=float, default=0.12)
     parser.add_argument("--min-area", type=float, default=300)
     parser.add_argument("--max-detections", type=int, default=3)
     parser.add_argument("--blur", type=int, default=5)
