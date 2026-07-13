@@ -11,6 +11,7 @@ from blacknode.workflow import validate_workflow
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 EXPECTED_NODES = {
+    "CV2CameraStream": "CV2",
     "CV2ColorObjectStream": "CV2",
     "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
@@ -165,6 +166,45 @@ def test_cv2_stream_runtime_pushes_live_config(monkeypatch):
         "payload": {"object_color": "#22c55e"},
         "timeout": 1.0,
     }]
+
+
+def test_cv2_camera_stream_starts_native_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["CV2CameraStream"]
+    calls = []
+
+    def fake_start_camera_stream(**kwargs):
+        calls.append(kwargs)
+        return {
+            "ok": True,
+            "stream_url": "http://127.0.0.1:9000/stream.mjpg",
+            "snapshot_url": "http://127.0.0.1:9000/snapshot.jpg",
+            "health_url": "http://127.0.0.1:9000/health.json",
+            "health": {"report": "camera 0 streaming via dshow"},
+        }
+
+    monkeypatch.setattr(fn.__globals__["cv2_runtime"], "start_camera_stream", fake_start_camera_stream)
+    result = fn({"device": "0", "backend": "auto", "width": 640, "height": 480})
+
+    assert result["streaming"] is True
+    assert result["preview"] == "http://127.0.0.1:9000/stream.mjpg"
+    assert calls[0]["device"] == "0"
+    assert calls[0]["backend"] == "auto"
+    assert calls[0]["width"] == 640
+    assert calls[0]["height"] == 480
+
+
+def test_cv2_camera_stream_reports_start_failure(monkeypatch):
+    fn = _NODE_REGISTRY["CV2CameraStream"]
+    monkeypatch.setattr(
+        fn.__globals__["cv2_runtime"],
+        "start_camera_stream",
+        lambda **_kwargs: {"ok": False, "error": "camera busy"},
+    )
+
+    result = fn({"device": "0"})
+
+    assert result["streaming"] is False
+    assert "camera busy" in result["report"]
 
 
 def test_stream_status_ready_dashboard():
@@ -484,6 +524,10 @@ def test_vlm_describe_requires_key_for_remote(monkeypatch):
 def test_cube_template_uses_live_cv2_stream_and_qwen3():
     path = TEMPLATE_DIR / "vision-cv2-cube-local-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
+    assert workflow["node_meta"]["stream"]["type"] == "CV2CameraStream"
+    assert workflow["node_meta"]["stream"]["params"]["device"] == "0"
+    assert workflow["node_meta"]["stream"]["params"]["backend"] == "auto"
+    assert "camera_run" not in workflow["node_meta"]
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
     assert workflow["node_meta"]["target_prompt"]["type"] == "Text"
     assert "green cube" not in workflow["node_meta"]["target_prompt"]["params"]["value"].lower()
@@ -516,6 +560,26 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert ("cv2_stream", "detection_url", "live_reason", "detection_url") not in edges
     assert ("joint_state", "names", "shoulder_pan_index", "items") in edges
     assert ("shoulder_pan_index", "value", "follow_cube", "joint") in edges
+
+
+def test_cube_native_ros2_template_keeps_ros_camera_transport():
+    path = TEMPLATE_DIR / "vision-cv2-cube-ros2-native-reasoning.json"
+    workflow = json.loads(path.read_text(encoding="utf-8"))
+    node_types = {node_id: meta["type"] for node_id, meta in workflow["node_meta"].items()}
+    edges = {
+        (edge["from"], edge["from_port"], edge["to"], edge["to_port"])
+        for edge in workflow["edges"]
+    }
+
+    assert node_types["camera_run"] == "ROS2Run"
+    assert node_types["stream"] == "ROS2ImageStream"
+    assert node_types["follow_cube"] == "ROS2NativeFollowDetectionJoint"
+    assert "CV2CameraStream" not in node_types.values()
+    assert workflow["node_meta"]["camera_run"]["params"]["package"] == "blacknode_usb_camera"
+    assert workflow["node_meta"]["stream"]["params"]["topic"] == "/camera/image_raw"
+    assert ("check", "report", "camera_run", "trigger") in edges
+    assert ("camera_run", "report", "stream", "trigger") in edges
+    assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
 
 
 def test_cube_rosbridge_template_uses_rosbridge_follow_nodes():

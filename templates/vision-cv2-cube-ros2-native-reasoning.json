@@ -1,7 +1,7 @@
 {
   "kind": "blacknode.workflow",
   "schema_version": 1,
-  "name": "Blacknode Vision CV2 Cube Direct Camera Follow",
+  "name": "Blacknode Vision CV2 Cube Native ROS 2 Camera Follow",
   "saved_at": "2026-07-13T00:00:00",
   "entrypoint": {
     "node_id": "overlay_out",
@@ -9,14 +9,13 @@
   },
   "metadata": {
     "template": true,
-    "description": "Open the local USB camera directly on Windows, Linux, or macOS, resolve a prompt/model target into HSV, stream live CV2 overlay/mask, run live image-first Ollama/Qwen reasoning, relay the clean camera feed through a CUDA GPU image filter, and pan a real robot's shoulder_pan joint to follow the tracked cube.",
+    "description": "Start the bundled native ROS 2 USB camera publisher on Linux, stream /camera/image_raw, resolve a prompt/model target into HSV, stream live CV2 overlay/mask, run live image-first Ollama/Qwen reasoning, relay the clean ROS camera feed through a CUDA GPU image filter, and follow the tracked cube through native ROS 2 robot topics. No rosbridge required.",
     "color": "#2563eb",
     "required_packages": [
       {
         "name": "blacknode-vision",
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
         "node_types": [
-          "CV2CameraStream",
           "CV2ColorObjectStream",
           "CV2ColorObjectTracker",
           "CV2HSVMask",
@@ -28,6 +27,8 @@
         "git_url": "https://github.com/temiroff/blacknode-ros2.git",
         "node_types": [
           "ROS2SystemCheck",
+          "ROS2Run",
+          "ROS2ImageStream",
           "ROS2NativeJointState",
           "ROS2NativeFollowDetectionJoint",
           "ROS2MotionDashboard"
@@ -61,8 +62,8 @@
         "refresh": true
       },
       "pos": [
-        80.0,
-        1451.0
+        80,
+        1451
       ],
       "inputs": [
         "refresh"
@@ -84,34 +85,92 @@
         "refresh": true
       }
     },
+    "camera_run": {
+      "id": "camera_run",
+      "type": "ROS2Run",
+      "params": {
+        "action": "start",
+        "run_id": "vision_camera",
+        "package": "blacknode_usb_camera",
+        "executable": "usb_camera",
+        "arguments": "--ros-args -p device:=0 -p image_topic:=/camera/image_raw -p width:=640 -p height:=480 -p hz:=30.0",
+        "expected_topic": "/camera/image_raw",
+        "wait_seconds": 10
+      },
+      "pos": [
+        390,
+        1598
+      ],
+      "inputs": [
+        "trigger",
+        "action",
+        "run_id",
+        "package",
+        "executable",
+        "arguments",
+        "expected_topic",
+        "wait_seconds"
+      ],
+      "outputs": [
+        "running",
+        "run_id",
+        "report"
+      ],
+      "input_types": {
+        "trigger": "Any",
+        "action": "Text",
+        "run_id": "Text",
+        "package": "Text",
+        "executable": "Text",
+        "arguments": "Text",
+        "expected_topic": "Text",
+        "wait_seconds": "Float"
+      },
+      "output_types": {
+        "running": "Bool",
+        "run_id": "Text",
+        "report": "Text"
+      },
+      "input_defaults": {
+        "action": "start",
+        "run_id": "vision_camera",
+        "package": "blacknode_usb_camera",
+        "executable": "usb_camera",
+        "arguments": "--ros-args -p device:=0 -p image_topic:=/camera/image_raw -p width:=640 -p height:=480 -p hz:=30.0",
+        "expected_topic": "/camera/image_raw",
+        "wait_seconds": 10
+      },
+      "input_choices": {
+        "action": [
+          "start",
+          "stop"
+        ]
+      }
+    },
     "stream": {
       "id": "stream",
-      "type": "CV2CameraStream",
+      "type": "ROS2ImageStream",
       "params": {
         "action": "start",
         "stream_id": "vision_camera",
-        "device": "0",
-        "backend": "auto",
-        "width": 640,
-        "height": 480,
+        "topic": "/camera/image_raw",
+        "message_type": "auto",
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 15.0,
+        "max_fps": 10,
         "max_width": 960,
-        "jpeg_quality": 82
+        "jpeg_quality": 80
       },
       "pos": [
-        1000.0,
+        1000,
         1043.5
       ],
       "inputs": [
         "trigger",
         "action",
         "stream_id",
-        "device",
-        "backend",
-        "width",
-        "height",
+        "topic",
+        "message_type",
         "host",
         "port",
         "max_fps",
@@ -123,7 +182,6 @@
         "streaming",
         "stream_url",
         "snapshot_url",
-        "health_url",
         "stream_id",
         "report"
       ],
@@ -131,10 +189,8 @@
         "trigger": "Any",
         "action": "Text",
         "stream_id": "Text",
-        "device": "Text",
-        "backend": "Text",
-        "width": "Int",
-        "height": "Int",
+        "topic": "Text",
+        "message_type": "Text",
         "host": "Text",
         "port": "Int",
         "max_fps": "Float",
@@ -146,35 +202,29 @@
         "streaming": "Bool",
         "stream_url": "Text",
         "snapshot_url": "Text",
-        "health_url": "Text",
         "stream_id": "Text",
         "report": "Text"
       },
       "input_defaults": {
         "action": "start",
         "stream_id": "vision_camera",
-        "device": "0",
-        "backend": "auto",
-        "width": 640,
-        "height": 480,
+        "topic": "/camera/image_raw",
+        "message_type": "auto",
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 15.0,
+        "max_fps": 10,
         "max_width": 960,
-        "jpeg_quality": 82
+        "jpeg_quality": 80
       },
       "input_choices": {
         "action": [
           "start",
           "stop"
         ],
-        "backend": [
+        "message_type": [
           "auto",
-          "dshow",
-          "msmf",
-          "v4l2",
-          "avfoundation",
-          "any"
+          "raw",
+          "compressed"
         ]
       }
     },
@@ -209,7 +259,7 @@
         "use_reasoning_color": true,
         "target": "",
         "reasoning_state_url": "",
-        "target_update_seconds": 2.0,
+        "target_update_seconds": 2,
         "label": "cube",
         "min_area": 200,
         "max_detections": 3,
@@ -217,12 +267,12 @@
         "morphology_iters": 1,
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 10.0,
+        "max_fps": 10,
         "max_width": 960,
         "jpeg_quality": 82
       },
       "pos": [
-        2700.0,
+        2700,
         733.5
       ],
       "inputs": [
@@ -307,7 +357,7 @@
         "use_reasoning_color": true,
         "target": "",
         "reasoning_state_url": "",
-        "target_update_seconds": 2.0,
+        "target_update_seconds": 2,
         "label": "cube",
         "min_area": 300,
         "max_detections": 3,
@@ -315,7 +365,7 @@
         "morphology_iters": 1,
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 10.0,
+        "max_fps": 10,
         "max_width": 960,
         "jpeg_quality": 82
       },
@@ -331,7 +381,7 @@
       "type": "OutputImage",
       "params": {},
       "pos": [
-        1850.0,
+        1850,
         1608.5
       ],
       "inputs": [
@@ -353,8 +403,8 @@
       "type": "OutputImage",
       "params": {},
       "pos": [
-        3550.0,
-        1991.0
+        3550,
+        1991
       ],
       "inputs": [
         "image"
@@ -377,8 +427,8 @@
         "label": "CV2 detection"
       },
       "pos": [
-        3550.0,
-        2663.0
+        3550,
+        2663
       ],
       "inputs": [
         "value"
@@ -395,8 +445,8 @@
       "type": "OutputImage",
       "params": {},
       "pos": [
-        3550.0,
-        1319.0
+        3550,
+        1319
       ],
       "inputs": [
         "image"
@@ -417,7 +467,7 @@
       "type": "OutputImage",
       "params": {},
       "pos": [
-        2700.0,
+        2700,
         1599.5
       ],
       "inputs": [
@@ -448,15 +498,15 @@
         "api_key": "",
         "temperature": 0.2,
         "max_tokens": 4096,
-        "interval_seconds": 3.0,
+        "interval_seconds": 3,
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 4.0,
+        "max_fps": 4,
         "max_width": 960,
         "title": "Blacknode Live Vision Reasoning"
       },
       "pos": [
-        1850.0,
+        1850,
         913.5
       ],
       "inputs": [
@@ -532,10 +582,10 @@
         "api_key": "",
         "temperature": 0.2,
         "max_tokens": 4096,
-        "interval_seconds": 3.0,
+        "interval_seconds": 3,
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 4.0,
+        "max_fps": 4,
         "max_width": 960,
         "title": "Blacknode Live Vision Reasoning"
       },
@@ -561,14 +611,14 @@
         "frame_width": 960,
         "target_x": 0.5,
         "deadband": 0.08,
-        "gain": 35.0,
-        "max_step": 8.0,
+        "gain": 35,
+        "max_step": 8,
         "invert": true,
         "ramp_seconds": 0.35,
         "hold_seconds": 0.2,
-        "rate_hz": 30.0,
+        "rate_hz": 30,
         "armed": true,
-        "timeout": 10.0,
+        "timeout": 10,
         "robot": {},
         "detection_url": ""
       },
@@ -649,14 +699,14 @@
         "frame_width": 640,
         "target_x": 0.5,
         "deadband": 0.08,
-        "gain": 35.0,
-        "max_step": 8.0,
+        "gain": 35,
+        "max_step": 8,
         "invert": false,
         "ramp_seconds": 0.35,
         "hold_seconds": 0.2,
-        "rate_hz": 30.0,
+        "rate_hz": 30,
         "armed": false,
-        "timeout": 10.0,
+        "timeout": 10,
         "robot": {},
         "detection_url": ""
       },
@@ -738,7 +788,7 @@
         "label": "Robot follow report"
       },
       "pos": [
-        4400.0,
+        4400,
         1426.5
       ],
       "inputs": [
@@ -770,8 +820,8 @@
         "driver": {}
       },
       "pos": [
-        390.0,
-        995.0
+        390,
+        995
       ],
       "inputs": [
         "trigger",
@@ -859,7 +909,7 @@
         "label": "Detected robot profile"
       },
       "pos": [
-        1000.0,
+        1000,
         1715.5
       ],
       "inputs": [
@@ -879,7 +929,7 @@
         "label": "Robot discovery report"
       },
       "pos": [
-        1000.0,
+        1000,
         1967.5
       ],
       "inputs": [
@@ -971,10 +1021,10 @@
         "stream_id": "cuda_filter",
         "source_url": "",
         "op": "grayscale",
-        "amount": 1.0,
+        "amount": 1,
         "host": "127.0.0.1",
         "port": 0,
-        "max_fps": 10.0,
+        "max_fps": 10,
         "max_width": 960,
         "jpeg_quality": 82
       }
@@ -987,11 +1037,11 @@
         "state_topic": "/joint_states",
         "command_topic": "/joint_commands",
         "config_topic": "/joint_config",
-        "rate_hz": 15.0
+        "rate_hz": 15
       },
       "pos": [
-        80.0,
-        1193.0
+        80,
+        1193
       ],
       "inputs": [
         "preset",
@@ -1020,7 +1070,7 @@
         "state_topic": "/joint_states",
         "command_topic": "/joint_commands",
         "config_topic": "/joint_config",
-        "rate_hz": 15.0
+        "rate_hz": 15
       }
     },
     "joint_state": {
@@ -1029,10 +1079,10 @@
       "params": {
         "topic": "/joint_states",
         "units": "degrees",
-        "timeout": 10.0
+        "timeout": 10
       },
       "pos": [
-        1000.0,
+        1000,
         785.5
       ],
       "inputs": [
@@ -1060,7 +1110,7 @@
       "input_defaults": {
         "topic": "/joint_states",
         "units": "radians",
-        "timeout": 10.0
+        "timeout": 10
       }
     },
     "shoulder_pan_index": {
@@ -1070,7 +1120,7 @@
         "index": 0
       },
       "pos": [
-        1850.0,
+        1850,
         724.5
       ],
       "inputs": [
@@ -1093,6 +1143,18 @@
     }
   },
   "edges": [
+    {
+      "from": "check",
+      "from_port": "report",
+      "to": "camera_run",
+      "to_port": "trigger"
+    },
+    {
+      "from": "camera_run",
+      "from_port": "report",
+      "to": "stream",
+      "to_port": "trigger"
+    },
     {
       "from": "stream",
       "from_port": "preview",

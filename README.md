@@ -81,10 +81,14 @@ rotation:=0
 - **Blacknode Vision Live VLM Reasoning** — start the USB camera, keep the live
   stream visible, capture one frame, call the VLM, and render a reasoning
   dashboard beside the image.
-- **Blacknode Vision CV2 Cube Local Reasoning** — start the USB camera, stream
-  the raw image, run live image-first Ollama/Qwen reasoning from the raw camera
-  snapshot, resolve the target color from the reasoning state, and stream a live
-  OpenCV tracking overlay and mask.
+- **Blacknode Vision CV2 Cube Direct Camera Follow** — open the USB camera
+  directly through OpenCV on Windows, Linux, or macOS, run live image-first
+  Ollama/Qwen reasoning, and stream the tracking overlay and mask without a ROS
+  camera publisher.
+- **Blacknode Vision CV2 Cube Native ROS 2 Camera Follow** — start the bundled
+  native ROS 2 USB camera publisher on Linux, consume `/camera/image_raw`, and
+  keep camera frames available to ROS tools while using native ROS 2 robot
+  control. Rosbridge is not required.
 - **Blacknode Vision CV2 Cube Rosbridge Follow** — run the same live
   CV2/Qwen cube tracking flow, but command the robot through
   `blacknode-ros2` rosbridge nodes at `ws://127.0.0.1:9090` instead of native

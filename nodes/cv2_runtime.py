@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 _STREAMS: dict[str, dict[str, Any]] = {}
+_CAMERA_STREAMS: dict[str, dict[str, Any]] = {}
 _REASONING_STREAMS: dict[str, dict[str, Any]] = {}
 
 
@@ -22,6 +23,10 @@ def _script_path() -> Path:
 
 def _reasoning_script_path() -> Path:
     return Path(__file__).resolve().parents[1] / "scripts" / "vision_reasoning_stream_server.py"
+
+
+def _camera_script_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "scripts" / "cv2_camera_stream_server.py"
 
 
 def _free_port(host: str) -> int:
@@ -238,6 +243,73 @@ def start_color_stream(
     }
 
 
+def start_camera_stream(
+    *,
+    stream_id: str,
+    device: str,
+    backend: str,
+    width: int,
+    height: int,
+    host: str,
+    port: int,
+    max_fps: float,
+    max_width: int,
+    jpeg_quality: int,
+) -> dict[str, Any]:
+    existing = _CAMERA_STREAMS.get(stream_id)
+    if existing and existing.get("proc") is not None and existing["proc"].poll() is None:
+        return {"ok": True, "stream_id": stream_id, **{key: existing[key] for key in ("stream_url", "snapshot_url", "health_url")}}
+    stop_camera_stream(stream_id)
+    script = _camera_script_path()
+    if not script.exists():
+        return {"ok": False, "error": f"camera stream helper not found: {script}"}
+    selected_port = int(port) if int(port) > 0 else _free_port(host)
+    args = [
+        sys.executable, str(script),
+        "--device", device,
+        "--backend", backend,
+        "--width", str(width),
+        "--height", str(height),
+        "--host", host,
+        "--port", str(selected_port),
+        "--max-fps", str(max_fps),
+        "--max-width", str(max_width),
+        "--jpeg-quality", str(jpeg_quality),
+    ]
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    base_url = f"http://{host}:{selected_port}"
+    health_url = f"{base_url}/health.json"
+    deadline = time.monotonic() + 8.0
+    health: dict[str, Any] = {}
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            return {"ok": False, "error": "camera stream helper exited before opening its HTTP port"}
+        try:
+            health = _read_json(health_url, timeout=0.5)
+            if health.get("streaming"):
+                break
+        except Exception:
+            pass
+        time.sleep(0.1)
+    else:
+        _terminate_process(proc)
+        return {"ok": False, "error": str(health.get("report") or f"camera {device!r} did not produce a frame")}
+    item = {
+        "proc": proc,
+        "device": device,
+        "backend": backend,
+        "stream_url": f"{base_url}/stream.mjpg",
+        "snapshot_url": f"{base_url}/snapshot.jpg",
+        "health_url": health_url,
+        "health": health,
+    }
+    _CAMERA_STREAMS[stream_id] = item
+    return {"ok": True, "stream_id": stream_id, **{key: item[key] for key in ("stream_url", "snapshot_url", "health_url")}, "health": health}
+
+
 def start_reasoning_stream(
     *,
     stream_id: str,
@@ -391,6 +463,16 @@ def stop_color_stream(stream_id: str = "") -> dict[str, Any]:
     return {"ok": True, "stopped": stopped}
 
 
+def stop_camera_stream(stream_id: str = "") -> dict[str, Any]:
+    ids = [stream_id] if stream_id else list(_CAMERA_STREAMS)
+    stopped = 0
+    for sid in ids:
+        item = _CAMERA_STREAMS.pop(sid, None)
+        if item and _terminate_process(item["proc"]):
+            stopped += 1
+    return {"ok": True, "stopped": stopped}
+
+
 def update_reasoning_stream_config(stream_id: str, updates: dict[str, Any]) -> dict[str, Any]:
     item = _REASONING_STREAMS.get(stream_id)
     if not item:
@@ -461,10 +543,24 @@ def runtime_status() -> dict[str, Any]:
             "state_url": item.get("state_url", ""),
             "model": item.get("model", ""),
         })
+    camera_streams: list[dict[str, Any]] = []
+    for stream_id, item in list(_CAMERA_STREAMS.items()):
+        proc = item.get("proc")
+        if proc is None or proc.poll() is not None:
+            _CAMERA_STREAMS.pop(stream_id, None)
+            continue
+        camera_streams.append({
+            "stream_id": stream_id,
+            "device": item.get("device", ""),
+            "backend": item.get("backend", ""),
+            "stream_url": item.get("stream_url", ""),
+            "snapshot_url": item.get("snapshot_url", ""),
+            "health_url": item.get("health_url", ""),
+        })
     return {
         "ok": True,
-        "active": bool(streams or reasoning_streams),
-        "cv2_streams": streams,
+        "active": bool(camera_streams or streams or reasoning_streams),
+        "cv2_streams": camera_streams + streams,
         "reasoning_streams": reasoning_streams,
     }
 
@@ -499,10 +595,11 @@ def update_color_stream_config(stream_id: str, updates: dict[str, Any]) -> dict[
 
 def stop_runtime_services() -> dict[str, Any]:
     before = runtime_status()
+    camera_result = stop_camera_stream("")
     color_result = stop_color_stream("")
     reasoning_result = stop_reasoning_stream("")
     stopped = {
-        "cv2_streams": int(color_result.get("stopped") or 0),
+        "cv2_streams": int(camera_result.get("stopped") or 0) + int(color_result.get("stopped") or 0),
         "reasoning_streams": int(reasoning_result.get("stopped") or 0),
     }
     return {

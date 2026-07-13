@@ -566,6 +566,77 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
 
 
 @node(
+    name="CV2CameraStream",
+    category=_CATEGORY,
+    description="Open a local camera directly and serve live MJPEG and snapshot endpoints on Windows, Linux, or macOS.",
+    inputs={
+        "trigger": AnyPort,
+        "action": Enum(["start", "stop"], default="start"),
+        "stream_id": Text(default="local_camera"),
+        "device": Text(default="0"),
+        "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
+        "width": Int(default=640),
+        "height": Int(default=480),
+        "host": Text(default="127.0.0.1"),
+        "port": Int(default=0),
+        "max_fps": Float(default=15.0),
+        "max_width": Int(default=960),
+        "jpeg_quality": Int(default=82),
+    },
+    outputs={
+        "preview": Image,
+        "streaming": Bool,
+        "stream_url": Text,
+        "snapshot_url": Text,
+        "health_url": Text,
+        "stream_id": Text,
+        "report": Text,
+    },
+)
+def cv2_camera_stream(ctx: dict) -> dict:
+    stream_id = str(ctx.get("stream_id") or "local_camera").strip() or "local_camera"
+    empty = {
+        "preview": "",
+        "streaming": False,
+        "stream_url": "",
+        "snapshot_url": "",
+        "health_url": "",
+        "stream_id": stream_id,
+    }
+    if str(ctx.get("action") or "start").strip().lower() == "stop":
+        result = cv2_runtime.stop_camera_stream(stream_id)
+        return {**empty, "report": f"stopped {result.get('stopped', 0)} camera stream(s)"}
+    if cv2 is None or np is None:
+        return {**empty, "report": _missing_cv2_outputs()["report"]}
+    device = str(ctx.get("device") if ctx.get("device") is not None else "0").strip() or "0"
+    result = cv2_runtime.start_camera_stream(
+        stream_id=stream_id,
+        device=device,
+        backend=str(ctx.get("backend") or "auto").strip().lower() or "auto",
+        width=max(0, int(ctx.get("width") or 0)),
+        height=max(0, int(ctx.get("height") or 0)),
+        host=str(ctx.get("host") or "127.0.0.1").strip() or "127.0.0.1",
+        port=max(0, int(ctx.get("port") or 0)),
+        max_fps=max(0.1, min(60.0, float(ctx.get("max_fps") or 15.0))),
+        max_width=max(0, int(ctx.get("max_width") or 960)),
+        jpeg_quality=max(1, min(100, int(ctx.get("jpeg_quality") or 82))),
+    )
+    if not result.get("ok"):
+        return {**empty, "report": f"camera stream FAILED: {result.get('error', 'unknown error')}"}
+    stream_url = str(result.get("stream_url") or "")
+    health = result.get("health") if isinstance(result.get("health"), dict) else {}
+    return {
+        "preview": stream_url,
+        "streaming": True,
+        "stream_url": stream_url,
+        "snapshot_url": str(result.get("snapshot_url") or ""),
+        "health_url": str(result.get("health_url") or ""),
+        "stream_id": stream_id,
+        "report": f"LIVE CAMERA STREAM running on {stream_url}; {health.get('report', 'camera ready')}",
+    }
+
+
+@node(
     name="CV2ColorObjectStream",
     category=_CATEGORY,
     description="Start or stop a live MJPEG stream with OpenCV color tracking overlay and detection JSON.",
