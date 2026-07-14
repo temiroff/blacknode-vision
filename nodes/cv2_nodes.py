@@ -673,6 +673,7 @@ def cv2_camera_stream(ctx: dict) -> dict:
         "snapshot_url": Text,
         "mask_stream_url": Text,
         "mask_url": Text,
+        "detection_stream": Dict,
         "detection_url": Text,
         "stream_id": Text,
         "found": Bool,
@@ -693,6 +694,7 @@ def cv2_color_object_stream(ctx: dict) -> dict:
         "snapshot_url": "",
         "mask_stream_url": "",
         "mask_url": "",
+        "detection_stream": {},
         "detection_url": "",
         "stream_id": stream_id,
         "found": False,
@@ -750,6 +752,12 @@ def cv2_color_object_stream(ctx: dict) -> dict:
     mask_stream_url = str(result.get("mask_stream_url") or "")
     mask_url = str(result.get("mask_url") or "")
     detection_url = str(result.get("detection_url") or "")
+    detection_stream = {
+        "kind": "blacknode.latest-value-stream",
+        "stream_id": stream_id,
+        "url": detection_url,
+        "media_type": "application/json",
+    }
     report = (
         f"LIVE CV2 STREAM running on {stream_url} from {source_url}; "
         f"{str(payload.get('report') or 'waiting for detections')}"
@@ -763,6 +771,7 @@ def cv2_color_object_stream(ctx: dict) -> dict:
         "snapshot_url": snapshot_url,
         "mask_stream_url": mask_stream_url,
         "mask_url": mask_url,
+        "detection_stream": detection_stream,
         "detection_url": detection_url,
         "stream_id": stream_id,
         "found": found,

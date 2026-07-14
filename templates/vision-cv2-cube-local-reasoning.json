@@ -271,6 +271,7 @@
         "snapshot_url",
         "mask_stream_url",
         "mask_url",
+        "detection_stream",
         "detection_url",
         "stream_id",
         "found",
@@ -311,6 +312,7 @@
         "snapshot_url": "Text",
         "mask_stream_url": "Text",
         "mask_url": "Text",
+        "detection_stream": "Dict",
         "detection_url": "Text",
         "stream_id": "Text",
         "found": "Bool",
@@ -597,6 +599,8 @@
         "armed": false,
         "timeout": 10.0,
         "robot": {},
+        "detection_stream": {},
+        "detection_timeout": 1.0,
         "detection_url": ""
       },
       "pos": [
@@ -609,7 +613,9 @@
         "run_id",
         "loop_hz",
         "detection",
+        "detection_stream",
         "detection_url",
+        "detection_timeout",
         "robot",
         "host",
         "port",
@@ -647,6 +653,7 @@
         "run_id": "Text",
         "loop_hz": "Float",
         "detection": "Dict",
+        "detection_stream": "Dict",
         "state_topic": "Text",
         "command_topic": "Text",
         "config_topic": "Text",
@@ -666,7 +673,8 @@
         "robot": "Dict",
         "host": "Text",
         "port": "Int",
-        "detection_url": "Text"
+        "detection_url": "Text",
+        "detection_timeout": "Float"
       },
       "output_types": {
         "running": "Bool",
@@ -702,6 +710,8 @@
         "armed": false,
         "timeout": 10.0,
         "robot": {},
+        "detection_stream": {},
+        "detection_timeout": 1.0,
         "detection_url": ""
       },
       "input_choices": {
@@ -1262,9 +1272,9 @@
     },
     {
       "from": "cv2_stream",
-      "from_port": "detection_url",
+      "from_port": "detection_stream",
       "to": "follow_cube",
-      "to_port": "detection_url"
+      "to_port": "detection_stream"
     },
     {
       "from": "robot",

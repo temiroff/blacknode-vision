@@ -90,9 +90,10 @@ rotation:=0
   keep camera frames available to ROS tools while using native ROS 2 robot
   control. Rosbridge is not required.
 - **Blacknode Vision CV2 Cube Rosbridge Follow** — run the same live
-  CV2/Qwen cube tracking flow, but command the robot through
-  `blacknode-ros2` rosbridge nodes at `ws://127.0.0.1:9090` instead of native
-  ROS 2 motion nodes or the USB robot package.
+  CV2/Qwen cube tracking flow, add a real-time CUDA Sobel preview, and command
+  the robot through `blacknode-ros2` at `ws://127.0.0.1:9090`. Its persistent
+  10 Hz visual-servo controller consumes the detection stream continuously;
+  camera movement does not re-cook the graph.
 
 For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
 auto-sources a ROS workspace when it finds exactly one `ros2_ws/install/setup.bash`.
@@ -171,7 +172,7 @@ are still limited by how fast the local VLM returns an answer.
 
 Changing `interval_seconds`, `model`, `provider`, `prompt`, or similar params
 on an already-running reasoning stream takes effect the next time you cook the
-node (e.g. via the editor's per-node Run or the Live toggle) — the running
+node with its per-node Run control — the running
 process is patched in place over HTTP rather than restarted, so the dashboard
 doesn't drop or reconnect. `image_url`/`detection_url`/`host`/`port` follow the
 same live-patch path; only stopping and starting the stream changes those.
@@ -214,6 +215,8 @@ track, then CV2 does the live low-latency tracking.
 `CV2ColorObjectStream` keeps overlay and mask previews live and exposes the
 latest mask stream at `/mask.mjpg`, mask snapshot at `/mask.png`, frame
 snapshot at `/snapshot.jpg`, and detection at `/detection.json`;
+it also returns a `detection_stream` handle for persistent controller nodes,
+so new detections do not require graph re-cooks.
 `CV2ColorObjectTracker` is still useful for single-frame tests. Both return
 structured detections, so the same prototype can drive a local LLM, robot
 control node, dashboard, or graph export.

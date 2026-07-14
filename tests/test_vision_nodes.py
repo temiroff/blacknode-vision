@@ -437,6 +437,12 @@ def test_cv2_color_object_stream_starts_runtime(monkeypatch):
     assert result["streaming"] is True
     assert result["preview"] == "http://127.0.0.1:9100/stream.mjpg"
     assert result["mask"] == "http://127.0.0.1:9100/mask.mjpg"
+    assert result["detection_stream"] == {
+        "kind": "blacknode.latest-value-stream",
+        "stream_id": "cube_tracker",
+        "url": "http://127.0.0.1:9100/detection.json",
+        "media_type": "application/json",
+    }
     assert result["found"] is True
     assert result["detection"]["center"]["x"] == 40
     assert calls[0]["source_url"] == "http://127.0.0.1:9000/snapshot.jpg"
@@ -595,9 +601,11 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert workflow["node_meta"]["follow_cube"]["params"]["frame_width"] == 640
     assert workflow["node_meta"]["follow_cube"]["params"]["target_x"] == 0.4
     assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.12
+    assert workflow["node_meta"]["follow_cube"]["params"]["gain"] == 10.0
     assert workflow["node_meta"]["follow_cube"]["params"]["max_step"] == 2.0
     assert workflow["node_meta"]["cv2_stream"]["params"]["show_follow_guides"] is True
     assert workflow["node_meta"]["cv2_stream"]["params"]["follow_target_x"] == 0.4
+    assert workflow["node_meta"]["cv2_stream"]["params"]["follow_deadband"] == 0.12
     assert "shoulder_pan_index" not in workflow["node_meta"]
     assert ("joint_state", "names", "shoulder_pan_index", "items") not in edges
     assert ("shoulder_pan_index", "value", "follow_cube", "joint") not in edges
@@ -650,19 +658,22 @@ def test_cube_rosbridge_template_uses_rosbridge_follow_nodes():
     assert node_types["joint_state"] == "ROS2JointState"
     assert node_types["follow_cube"] == "ROS2ContinuousFollowDetectionJoint"
     assert workflow["node_meta"]["follow_cube"]["params"]["action"] == "start"
-    assert workflow["node_meta"]["follow_cube"]["params"]["loop_hz"] == 2.0
+    assert workflow["node_meta"]["follow_cube"]["params"]["loop_hz"] == 10.0
     assert workflow["node_meta"]["follow_cube"]["params"]["armed"] is False
     assert workflow["node_meta"]["follow_cube"]["params"]["host"] == "127.0.0.1"
     assert workflow["node_meta"]["follow_cube"]["params"]["port"] == 9090
     assert workflow["node_meta"]["follow_cube"]["params"]["frame_width"] == 640
     assert workflow["node_meta"]["follow_cube"]["params"]["target_x"] == 0.4
-    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.12
-    assert workflow["node_meta"]["follow_cube"]["params"]["max_step"] == 2.0
+    assert workflow["node_meta"]["follow_cube"]["params"]["deadband"] == 0.03
+    assert workflow["node_meta"]["follow_cube"]["params"]["gain"] == 4.0
+    assert workflow["node_meta"]["follow_cube"]["params"]["max_step"] == 0.75
     assert workflow["node_meta"]["cv2_stream"]["params"]["show_follow_guides"] is True
     assert workflow["node_meta"]["cv2_stream"]["params"]["follow_target_x"] == 0.4
+    assert workflow["node_meta"]["cv2_stream"]["params"]["follow_deadband"] == 0.03
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
     assert ("cv2_stream", "detection", "follow_cube", "detection") in edges
-    assert ("cv2_stream", "detection_url", "follow_cube", "detection_url") in edges
+    assert ("cv2_stream", "detection_stream", "follow_cube", "detection_stream") in edges
+    assert ("cv2_stream", "detection_url", "follow_cube", "detection_url") not in edges
     assert ("check", "report", "robot_bridge", "trigger") in edges
     assert ("preset", "driver", "robot_bridge", "driver") in edges
     assert ("robot_bridge", "report", "joint_state", "trigger") in edges
