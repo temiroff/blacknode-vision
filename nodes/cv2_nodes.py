@@ -567,6 +567,7 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
 
 @node(
     name="CV2CameraStream",
+    live=True,
     category=_CATEGORY,
     description="Open a local camera directly and serve live MJPEG and snapshot endpoints on Windows, Linux, or macOS.",
     inputs={
@@ -638,6 +639,7 @@ def cv2_camera_stream(ctx: dict) -> dict:
 
 @node(
     name="CV2ColorObjectStream",
+    live=True,
     category=_CATEGORY,
     description="Start or stop a live MJPEG stream with OpenCV color tracking overlay and detection JSON.",
     inputs={

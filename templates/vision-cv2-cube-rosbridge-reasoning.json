@@ -1,7 +1,7 @@
 {
   "kind": "blacknode.workflow",
   "schema_version": 1,
-  "name": "Blacknode Vision CV2 Cube Rosbridge Follow",
+  "name": "Blacknode Vision CV2 Cube Continuous Follow",
   "saved_at": "2026-07-13T00:00:00",
   "entrypoint": {
     "node_id": "overlay_out",
@@ -9,7 +9,7 @@
   },
   "metadata": {
     "template": true,
-    "description": "Windows rosbridge path: automatically start local rosbridge, discover COM3/USB, launch the SO-ARM101 serial driver, stream camera reasoning, and preview shoulder_pan tracking. Motion stays disarmed until explicitly enabled.",
+    "description": "Discover USB, prepare the available robot transport, launch the SO-ARM101 driver, stream camera reasoning, and continuously follow a colored cube with shoulder_pan. Motion stays disarmed until explicitly enabled.",
     "color": "#2563eb",
     "required_packages": [
       {
@@ -27,7 +27,7 @@
         "name": "blacknode-ros2",
         "git_url": "https://github.com/temiroff/blacknode-ros2.git",
         "node_types": [
-          "ROS2RosbridgeServer",
+          "ROS2Status",
           "ROS2JointState",
           "ROS2ContinuousFollowDetectionJoint",
           "ROS2MotionDashboard"
@@ -53,7 +53,7 @@
   "node_meta": {
     "check": {
       "id": "check",
-      "type": "ROS2RosbridgeServer",
+      "type": "ROS2Status",
       "params": {
         "action": "ensure",
         "host": "127.0.0.1",
@@ -737,6 +737,7 @@
       ],
       "inputs": [
         "joint",
+        "pose",
         "before",
         "after",
         "target",
@@ -749,6 +750,7 @@
       ],
       "input_types": {
         "joint": "Text",
+        "pose": "Dict",
         "before": "Dict",
         "after": "Dict",
         "target": "Dict",
@@ -791,7 +793,7 @@
       "id": "robot_report_out",
       "type": "Output",
       "params": {
-        "label": "Rosbridge follow report"
+        "label": "Robot follow report"
       },
       "pos": [
         4400.0,
@@ -811,7 +813,7 @@
       "id": "robot_profile_out",
       "type": "Output",
       "params": {
-        "label": "Rosbridge robot profile"
+        "label": "Robot profile"
       },
       "pos": [
         1000.0,
@@ -831,7 +833,7 @@
       "id": "robot_discovery_report_out",
       "type": "Output",
       "params": {
-        "label": "Rosbridge discovery report"
+        "label": "Robot discovery report"
       },
       "pos": [
         1000.0,
@@ -997,7 +999,7 @@
         "command_topic": "/joint_commands",
         "config_topic": "/joint_config",
         "rate_hz": 15.0,
-        "transport": "rosbridge",
+        "transport": "auto",
         "host": "127.0.0.1",
         "port": 9090
       },
@@ -1011,7 +1013,7 @@
       "output_types": {"driver": "Dict", "report": "Text"},
       "input_defaults": {
         "preset": "so_arm101", "state_topic": "/joint_states", "command_topic": "/joint_commands",
-        "config_topic": "/joint_config", "rate_hz": 15.0, "transport": "native",
+        "config_topic": "/joint_config", "rate_hz": 15.0, "transport": "auto",
         "host": "127.0.0.1", "port": 9090
       }
     },
@@ -1129,6 +1131,12 @@
       "from_port": "detection",
       "to": "follow_cube",
       "to_port": "detection"
+    },
+    {
+      "from": "joint_state",
+      "from_port": "pose",
+      "to": "robot_motion_dashboard",
+      "to_port": "pose"
     },
     {
       "from": "follow_cube",
