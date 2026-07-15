@@ -1,7 +1,7 @@
 {
   "kind": "blacknode.workflow",
   "schema_version": 1,
-  "name": "Blacknode Vision CV2 Cube Native ROS 2 Camera Follow",
+  "name": "Blacknode Vision CV2 Cube ROS 2 Camera Follow",
   "saved_at": "2026-07-13T00:00:00",
   "entrypoint": {
     "node_id": "overlay_out",
@@ -9,7 +9,7 @@
   },
   "metadata": {
     "template": true,
-    "description": "Start the bundled native ROS 2 USB camera publisher on Linux, stream /camera/image_raw, resolve a prompt/model target into HSV, stream live CV2 overlay/mask, run live image-first Ollama/Qwen reasoning, relay the clean ROS camera feed through a CUDA GPU image filter, and follow the tracked cube through native ROS 2 robot topics. No rosbridge required.",
+    "description": "Start the bundled ROS 2 USB camera publisher, stream /camera/image_raw, resolve a target into HSV, show live CV2 reasoning, and follow the tracked cube through the automatically selected robot transport.",
     "color": "#2563eb",
     "required_packages": [
       {
@@ -29,8 +29,8 @@
           "ROS2SystemCheck",
           "ROS2Run",
           "ROS2ImageStream",
-          "ROS2NativeJointState",
-          "ROS2NativeFollowDetectionJoint",
+          "ROS2JointState",
+          "ROS2FollowDetectionJoint",
           "ROS2MotionDashboard"
         ]
       },
@@ -601,7 +601,7 @@
     },
     "follow_cube": {
       "id": "follow_cube",
-      "type": "ROS2NativeFollowDetectionJoint",
+      "type": "ROS2FollowDetectionJoint",
       "params": {
         "state_topic": "/joint_states",
         "command_topic": "/joint_commands",
@@ -731,6 +731,7 @@
       ],
       "inputs": [
         "joint",
+        "pose",
         "before",
         "after",
         "target",
@@ -743,6 +744,7 @@
       ],
       "input_types": {
         "joint": "Text",
+        "pose": "Dict",
         "before": "Dict",
         "after": "Dict",
         "target": "Dict",
@@ -1075,7 +1077,7 @@
     },
     "joint_state": {
       "id": "joint_state",
-      "type": "ROS2NativeJointState",
+      "type": "ROS2JointState",
       "params": {
         "topic": "/joint_states",
         "units": "degrees",
@@ -1220,6 +1222,12 @@
       "from_port": "detection",
       "to": "follow_cube",
       "to_port": "detection"
+    },
+    {
+      "from": "joint_state",
+      "from_port": "pose",
+      "to": "robot_motion_dashboard",
+      "to_port": "pose"
     },
     {
       "from": "follow_cube",

@@ -590,8 +590,8 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert ("stream", "snapshot_url", "live_reason", "image_url") in edges
     assert ("live_reason", "preview", "reason_dashboard_out", "image") in edges
     assert ("cv2_stream", "detection_url", "live_reason", "detection_url") not in edges
-    assert workflow["node_meta"]["check"]["type"] == "ROS2RosbridgeServer"
-    assert workflow["node_meta"]["preset"]["params"]["transport"] == "rosbridge"
+    assert workflow["node_meta"]["check"]["type"] == "ROS2Status"
+    assert workflow["node_meta"]["preset"]["params"]["transport"] == "auto"
     assert workflow["node_meta"]["joint_state"]["type"] == "ROS2JointState"
     assert workflow["node_meta"]["follow_cube"]["type"] == "ROS2ContinuousFollowDetectionJoint"
     assert workflow["node_meta"]["follow_cube"]["params"]["action"] == "start"
@@ -611,7 +611,7 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert ("shoulder_pan_index", "value", "follow_cube", "joint") not in edges
 
 
-def test_cube_native_ros2_template_keeps_ros_camera_transport():
+def test_cube_ros2_template_keeps_ros_camera_and_generic_robot_transport():
     path = TEMPLATE_DIR / "vision-cv2-cube-ros2-native-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
     node_types = {node_id: meta["type"] for node_id, meta in workflow["node_meta"].items()}
@@ -622,7 +622,8 @@ def test_cube_native_ros2_template_keeps_ros_camera_transport():
 
     assert node_types["camera_run"] == "ROS2Run"
     assert node_types["stream"] == "ROS2ImageStream"
-    assert node_types["follow_cube"] == "ROS2NativeFollowDetectionJoint"
+    assert node_types["follow_cube"] == "ROS2FollowDetectionJoint"
+    assert not any("Native" in node_type or "Rosbridge" in node_type for node_type in node_types.values())
     assert "CV2CameraStream" not in node_types.values()
     assert workflow["node_meta"]["camera_run"]["params"]["package"] == "blacknode_usb_camera"
     assert workflow["node_meta"]["stream"]["params"]["topic"] == "/camera/image_raw"
@@ -631,7 +632,7 @@ def test_cube_native_ros2_template_keeps_ros_camera_transport():
     assert ("stream", "snapshot_url", "cv2_stream", "source_url") in edges
 
 
-def test_cube_rosbridge_template_uses_rosbridge_follow_nodes():
+def test_cube_continuous_template_uses_generic_setup_nodes():
     path = TEMPLATE_DIR / "vision-cv2-cube-rosbridge-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
     node_types = {
@@ -648,12 +649,12 @@ def test_cube_rosbridge_template_uses_rosbridge_follow_nodes():
     }
 
     assert {"blacknode-vision", "blacknode-ros2", "blacknode-robot", "blacknode-cuda"} <= package_names
-    assert not any(node_type.startswith("ROS2Native") for node_type in node_types.values())
-    assert node_types["check"] == "ROS2RosbridgeServer"
+    assert not any("Native" in node_type or "Rosbridge" in node_type for node_type in node_types.values())
+    assert node_types["check"] == "ROS2Status"
     assert node_types["stream"] == "CV2CameraStream"
     assert "camera_run" not in node_types
     assert node_types["preset"] == "RobotDriverPreset"
-    assert workflow["node_meta"]["preset"]["params"]["transport"] == "rosbridge"
+    assert workflow["node_meta"]["preset"]["params"]["transport"] == "auto"
     assert node_types["robot_bridge"] == "RobotDiscovery"
     assert node_types["joint_state"] == "ROS2JointState"
     assert node_types["follow_cube"] == "ROS2ContinuousFollowDetectionJoint"

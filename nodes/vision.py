@@ -636,6 +636,7 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
 
 @node(
     name="VisionReasoningStream",
+    live=True,
     category=_CATEGORY,
     description="Start or stop a live MJPEG dashboard that periodically describes a camera image (local Ollama or NVIDIA NIM).",
     inputs={

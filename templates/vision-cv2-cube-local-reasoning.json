@@ -9,7 +9,7 @@
   },
   "metadata": {
     "template": true,
-    "description": "Windows one-click path: open the local USB camera, automatically ensure a local rosbridge Docker service, publish the SO-ARM101 serial driver through rosbridge, stream CV2 and Qwen reasoning, and preview shoulder_pan tracking disarmed. Use the ROS2 Native template for direct rclpy control on Linux.",
+    "description": "Open the local USB camera, auto-select and prepare the robot transport, launch the SO-ARM101 driver, stream CV2 and Qwen reasoning, and preview shoulder_pan tracking disarmed.",
     "color": "#2563eb",
     "required_packages": [
       {
@@ -27,7 +27,7 @@
         "name": "blacknode-ros2",
         "git_url": "https://github.com/temiroff/blacknode-ros2.git",
         "node_types": [
-          "ROS2RosbridgeServer",
+          "ROS2Status",
           "ROS2JointState",
           "ROS2ContinuousFollowDetectionJoint",
           "ROS2MotionDashboard"
@@ -56,7 +56,7 @@
   "node_meta": {
     "check": {
       "id": "check",
-      "type": "ROS2RosbridgeServer",
+      "type": "ROS2Status",
       "params": {
         "action": "ensure",
         "host": "127.0.0.1",
@@ -740,6 +740,7 @@
       ],
       "inputs": [
         "joint",
+        "pose",
         "before",
         "after",
         "target",
@@ -752,6 +753,7 @@
       ],
       "input_types": {
         "joint": "Text",
+        "pose": "Dict",
         "before": "Dict",
         "after": "Dict",
         "target": "Dict",
@@ -1047,7 +1049,7 @@
         "command_topic": "/joint_commands",
         "config_topic": "/joint_config",
         "rate_hz": 15.0,
-        "transport": "rosbridge",
+        "transport": "auto",
         "host": "127.0.0.1",
         "port": 9090
       },
@@ -1089,7 +1091,7 @@
         "command_topic": "/joint_commands",
         "config_topic": "/joint_config",
         "rate_hz": 15.0,
-        "transport": "native",
+        "transport": "auto",
         "host": "127.0.0.1",
         "port": 9090
       }
@@ -1209,6 +1211,12 @@
       "from_port": "detection",
       "to": "follow_cube",
       "to_port": "detection"
+    },
+    {
+      "from": "joint_state",
+      "from_port": "pose",
+      "to": "robot_motion_dashboard",
+      "to_port": "pose"
     },
     {
       "from": "follow_cube",
