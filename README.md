@@ -233,6 +233,10 @@ but it should still be an export target, not a node on the canvas.
 
 ## Development
 
+Coding agents should read [`AGENTS.md`](AGENTS.md) before changing this package.
+It defines vision ownership, managed-stream behavior, freshness requirements,
+and verification commands.
+
 Run tests from the Blacknode repo root:
 
 ```bash
