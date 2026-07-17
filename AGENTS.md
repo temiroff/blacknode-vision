@@ -35,3 +35,9 @@ Get-ChildItem packages\blacknode-vision\templates\*.json | ForEach-Object { blac
 
 Report camera, ROS, GPU, or model paths that were not exercised. See the
 Blacknode `docs/packages.md` and `blacknode-development` skill for shared rules.
+
+## Documentation voice
+
+Describe Blacknode camera, tracking, reasoning, stream, and template behavior
+directly. Mention provider names only where they are implemented configuration
+choices; avoid product comparisons.

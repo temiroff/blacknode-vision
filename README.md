@@ -2,13 +2,13 @@
 
 **Robot vision nodes for [Blacknode](https://github.com/temiroff/Blacknode).**
 
-This is a Blacknode **extension package** — it does not run on its own. It
-plugs robot vision into the Blacknode visual workflow editor: run USB cameras,
+Install this Blacknode **extension package** to add robot vision to the visual
+workflow editor: run USB cameras,
 stream ROS 2 images, inspect VLM reasoning, track objects with OpenCV, and
 drive it all from workflows or AI agents over MCP.
 
-It does not replace `blacknode-ros2`; it builds on it. ROS 2 handles camera
-transport, topic inspection, snapshots, and streams. `blacknode-vision` adds
+It composes with `blacknode-ros2`: ROS 2 handles camera transport, topic
+inspection, snapshots, and streams, while `blacknode-vision` adds
 vision-specific workflow pieces: a bundled generic USB camera ROS 2 node,
 camera consoles, frame prompts, stream dashboards, OpenCV tracking, and
 optional VLM/LLM inspection.
