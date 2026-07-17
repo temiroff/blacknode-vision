@@ -4,6 +4,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import numpy as np
+
 import blacknode  # noqa: F401  triggers package discovery
 from blacknode.pkg.blacknode_vision import cv2_runtime
 from blacknode.node import _NODE_REGISTRY
@@ -12,7 +14,13 @@ from blacknode.workflow import validate_workflow
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 EXPECTED_NODES = {
-    "CV2CameraStream": "CV2",
+    "Camera": "Camera",
+    "CameraDiscovery": "Camera",
+    "CameraSelect": "Camera",
+    "CameraStream": "Camera",
+    "CV2CameraDiscovery": "Camera",
+    "CV2CameraSelect": "Camera",
+    "CV2CameraStream": "Camera",
     "CV2ColorObjectStream": "CV2",
     "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
@@ -31,6 +39,14 @@ def test_nodes_registered_with_package_and_category():
         assert name in _NODE_REGISTRY, name
         assert _NODE_REGISTRY[name]._bn_package == "blacknode-vision"
         assert _NODE_REGISTRY[name]._bn_category == category
+
+
+def test_only_camera_facade_is_public_camera_setup():
+    assert _NODE_REGISTRY["Camera"]._bn_hidden is False
+    assert _NODE_REGISTRY["Camera"]._bn_primary_inputs == ["trigger"]
+    assert _NODE_REGISTRY["Camera"]._bn_primary_outputs == ["preview", "frame_stream", "report"]
+    for name in ("CameraDiscovery", "CameraSelect", "CameraStream", "CV2CameraDiscovery", "CV2CameraSelect", "CV2CameraStream"):
+        assert _NODE_REGISTRY[name]._bn_hidden is True
 
 
 def test_templates_validate():
@@ -188,10 +204,120 @@ def test_cv2_camera_stream_starts_native_runtime(monkeypatch):
 
     assert result["streaming"] is True
     assert result["preview"] == "http://127.0.0.1:9000/stream.mjpg"
+    assert result["frame_stream"] == {
+        "kind": "blacknode.frame-stream",
+        "schema_version": 1,
+        "stream_id": "local_camera",
+        "snapshot_url": "http://127.0.0.1:9000/snapshot.jpg",
+        "health_url": "http://127.0.0.1:9000/health.json",
+        "media_type": "image/jpeg",
+        "mode": "latest",
+        "clock": "unix_ns",
+    }
     assert calls[0]["device"] == "0"
     assert calls[0]["backend"] == "auto"
     assert calls[0]["width"] == 640
     assert calls[0]["height"] == 480
+
+
+def test_camera_select_picks_discovered_device():
+    result = _NODE_REGISTRY["CameraSelect"]({
+        "discovery": {"devices": [
+            {"kind": "blacknode.camera-device", "device": "0", "backend": "dshow", "label": "Front"},
+            {"kind": "blacknode.camera-device", "device": "1", "backend": "dshow", "label": "Wrist"},
+        ]},
+        "selection": 1,
+    })
+    assert result["selected"] is True
+    assert result["device"] == "1"
+    assert result["label"] == "Wrist"
+
+
+def test_camera_select_uses_hardware_index_not_compacted_list_position():
+    result = _NODE_REGISTRY["CameraSelect"]({
+        "discovery": {"devices": [
+            {"kind": "blacknode.camera-device", "index": 0, "device": "0", "label": "Front"},
+            {"kind": "blacknode.camera-device", "index": 2, "device": "2", "label": "Overhead"},
+        ]},
+        "selection": 1,
+    })
+
+    assert result["selected"] is False
+    assert "hardware index 1" in result["report"]
+
+
+def test_camera_discovery_probes_and_releases_devices(monkeypatch):
+    released = []
+
+    class Capture:
+        def __init__(self, device, *_args):
+            self.device = device
+
+        def isOpened(self):
+            return self.device == 0
+
+        def read(self):
+            return True, np.zeros((240, 320, 3), dtype=np.uint8)
+
+        def release(self):
+            released.append(self.device)
+
+    fn = _NODE_REGISTRY["CameraDiscovery"]
+    monkeypatch.setitem(fn.__globals__, "_camera_candidates", lambda _limit: [(0, "Front"), (1, "Wrist")])
+    monkeypatch.setattr(fn.__globals__["cv2"], "VideoCapture", Capture)
+    result = fn({"backend": "auto", "max_devices": 2})
+
+    assert result["count"] == 1
+    assert result["devices"][0]["label"] == "Front"
+    assert released == [0, 1]
+
+
+def test_camera_discovery_preserves_hardware_indexes_when_a_camera_is_busy(monkeypatch):
+    class Capture:
+        def __init__(self, device, *_args):
+            self.device = device
+
+        def isOpened(self):
+            return self.device != 1
+
+        def read(self):
+            return True, np.zeros((240, 320, 3), dtype=np.uint8)
+
+        def release(self):
+            pass
+
+    fn = _NODE_REGISTRY["CameraDiscovery"]
+    monkeypatch.setitem(fn.__globals__, "_camera_candidates", lambda _limit: [(0, "Front"), (1, "Wrist"), (2, "Overhead")])
+    monkeypatch.setattr(fn.__globals__["cv2"], "VideoCapture", Capture)
+
+    result = fn({"backend": "auto", "max_devices": 3})
+
+    assert [camera["index"] for camera in result["devices"]] == [0, 2]
+    assert [camera["device"] for camera in result["devices"]] == ["0", "2"]
+
+
+def test_camera_combines_discovery_selection_and_stream(monkeypatch):
+    fn = _NODE_REGISTRY["Camera"]
+    monkeypatch.setitem(fn.__globals__, "cv2_camera_discovery", lambda _ctx: {
+        "found": True,
+        "count": 2,
+        "devices": [{"device": "0", "label": "Front"}, {"device": "1", "label": "Wrist"}],
+        "discovery": {"devices": [{"device": "0", "label": "Front"}, {"device": "1", "label": "Wrist"}]},
+        "report": "found 2 camera(s)",
+    })
+    monkeypatch.setitem(fn.__globals__, "cv2_camera_stream", lambda ctx: {
+        "preview": "http://camera/stream.mjpg", "streaming": True, "stream_url": "http://camera/stream.mjpg",
+        "snapshot_url": "http://camera/snapshot.jpg", "health_url": "http://camera/health.json",
+        "frame_stream": {"kind": "blacknode.frame-stream", "stream_id": "camera_1"},
+        "stream_id": "camera_1", "report": f"streaming {ctx['camera']['label']}",
+    })
+
+    result = fn({"selection": 1})
+
+    assert result["count"] == 2
+    assert result["label"] == "Wrist"
+    assert result["streaming"] is True
+    assert result["frame_stream"]["stream_id"] == "camera_1"
 
 
 def test_cv2_camera_stream_reports_start_failure(monkeypatch):
@@ -556,9 +682,9 @@ def test_vlm_describe_requires_key_for_remote(monkeypatch):
 def test_cube_template_uses_live_cv2_stream_and_qwen3():
     path = TEMPLATE_DIR / "vision-cv2-cube-local-reasoning.json"
     workflow = json.loads(path.read_text(encoding="utf-8"))
-    assert workflow["node_meta"]["stream"]["type"] == "CV2CameraStream"
-    assert workflow["node_meta"]["stream"]["params"]["device"] == "0"
-    assert workflow["node_meta"]["stream"]["params"]["backend"] == "auto"
+    assert workflow["node_meta"]["stream"]["type"] == "Camera"
+    assert workflow["node_meta"]["stream"]["params"]["selection"] == 0
+    assert "backend" not in workflow["node_meta"]["stream"]["params"]
     assert "camera_run" not in workflow["node_meta"]
     assert workflow["node_meta"]["cv2_stream"]["type"] == "CV2ColorObjectStream"
     assert workflow["node_meta"]["target_prompt"]["type"] == "Text"
@@ -591,7 +717,10 @@ def test_cube_template_uses_live_cv2_stream_and_qwen3():
     assert ("live_reason", "preview", "reason_dashboard_out", "image") in edges
     assert ("cv2_stream", "detection_url", "live_reason", "detection_url") not in edges
     assert workflow["node_meta"]["check"]["type"] == "ROS2Status"
-    assert workflow["node_meta"]["preset"]["params"]["transport"] == "auto"
+    assert workflow["node_meta"]["robot"]["type"] == "Robot"
+    assert workflow["node_meta"]["robot"]["params"]["profile_id"] == "so_arm101"
+    assert workflow["node_meta"]["robot"]["params"]["selection"] == 0
+    assert sum(meta["type"] == "Robot" for meta in workflow["node_meta"].values()) == 1
     assert workflow["node_meta"]["joint_state"]["type"] == "ROS2JointState"
     assert workflow["node_meta"]["follow_cube"]["type"] == "ROS2ContinuousFollowDetectionJoint"
     assert workflow["node_meta"]["follow_cube"]["params"]["action"] == "start"
@@ -623,6 +752,10 @@ def test_cube_ros2_template_keeps_ros_camera_and_generic_robot_transport():
     assert node_types["camera_run"] == "ROS2Run"
     assert node_types["stream"] == "ROS2ImageStream"
     assert node_types["follow_cube"] == "ROS2FollowDetectionJoint"
+    assert node_types["robot"] == "Robot"
+    assert workflow["node_meta"]["robot"]["params"]["profile_id"] == "so_arm101"
+    assert workflow["node_meta"]["robot"]["params"]["selection"] == 0
+    assert sum(node_type == "Robot" for node_type in node_types.values()) == 1
     assert not any("Native" in node_type or "Rosbridge" in node_type for node_type in node_types.values())
     assert "CV2CameraStream" not in node_types.values()
     assert workflow["node_meta"]["camera_run"]["params"]["package"] == "blacknode_usb_camera"
@@ -651,11 +784,12 @@ def test_cube_continuous_template_uses_generic_setup_nodes():
     assert {"blacknode-vision", "blacknode-ros2", "blacknode-robot", "blacknode-cuda"} <= package_names
     assert not any("Native" in node_type or "Rosbridge" in node_type for node_type in node_types.values())
     assert node_types["check"] == "ROS2Status"
-    assert node_types["stream"] == "CV2CameraStream"
+    assert node_types["stream"] == "Camera"
     assert "camera_run" not in node_types
-    assert node_types["preset"] == "RobotDriverPreset"
-    assert workflow["node_meta"]["preset"]["params"]["transport"] == "auto"
-    assert node_types["robot_bridge"] == "RobotDiscovery"
+    assert node_types["robot"] == "Robot"
+    assert workflow["node_meta"]["robot"]["params"]["profile_id"] == "so_arm101"
+    assert workflow["node_meta"]["robot"]["params"]["selection"] == 0
+    assert sum(node_type == "Robot" for node_type in node_types.values()) == 1
     assert node_types["joint_state"] == "ROS2JointState"
     assert node_types["follow_cube"] == "ROS2ContinuousFollowDetectionJoint"
     assert workflow["node_meta"]["follow_cube"]["params"]["action"] == "start"
@@ -675,9 +809,9 @@ def test_cube_continuous_template_uses_generic_setup_nodes():
     assert ("cv2_stream", "detection", "follow_cube", "detection") in edges
     assert ("cv2_stream", "detection_stream", "follow_cube", "detection_stream") in edges
     assert ("cv2_stream", "detection_url", "follow_cube", "detection_url") not in edges
-    assert ("check", "report", "robot_bridge", "trigger") in edges
-    assert ("preset", "driver", "robot_bridge", "driver") in edges
-    assert ("robot_bridge", "report", "joint_state", "trigger") in edges
-    assert ("robot_bridge", "report", "follow_cube", "trigger") in edges
-    assert ("robot_bridge", "robot", "follow_cube", "robot") in edges
+    assert ("check", "report", "robot", "trigger") in edges
+    assert not any(edge[0] == "preset" or edge[2] == "preset" for edge in edges)
+    assert ("robot", "report", "joint_state", "trigger") in edges
+    assert ("robot", "report", "follow_cube", "trigger") in edges
+    assert ("robot", "robot", "follow_cube", "robot") in edges
     assert "shoulder_pan_index" not in node_types

@@ -16,7 +16,7 @@
         "name": "blacknode-vision",
         "git_url": "https://github.com/temiroff/blacknode-vision.git",
         "node_types": [
-          "CV2CameraStream",
+          "Camera",
           "CV2ColorObjectStream",
           "CV2ColorObjectTracker",
           "CV2HSVMask",
@@ -37,8 +37,7 @@
         "name": "blacknode-robot",
         "git_url": "https://github.com/temiroff/blacknode-robot.git",
         "node_types": [
-          "RobotDriverPreset",
-          "RobotDiscovery"
+          "Robot"
         ]
       },
       {
@@ -93,12 +92,11 @@
     },
     "stream": {
       "id": "stream",
-      "type": "CV2CameraStream",
+      "type": "Camera",
       "params": {
         "action": "start",
         "stream_id": "vision_camera",
-        "device": "0",
-        "backend": "auto",
+        "selection": 0,
         "width": 640,
         "height": 480,
         "host": "127.0.0.1",
@@ -990,43 +988,14 @@
         ]
       }
     },
-    "preset": {
-      "id": "preset",
-      "type": "RobotDriverPreset",
+    "robot": {
+      "id": "robot",
+      "type": "Robot",
       "params": {
-        "preset": "so_arm101",
-        "state_topic": "/joint_states",
-        "command_topic": "/joint_commands",
-        "config_topic": "/joint_config",
-        "rate_hz": 15.0,
-        "transport": "auto",
-        "host": "127.0.0.1",
-        "port": 9090
-      },
-      "pos": [80.0, 1193.0],
-      "inputs": ["preset", "state_topic", "command_topic", "config_topic", "rate_hz", "transport", "host", "port"],
-      "outputs": ["driver", "report"],
-      "input_types": {
-        "preset": "Text", "state_topic": "Text", "command_topic": "Text", "config_topic": "Text",
-        "rate_hz": "Float", "transport": "Text", "host": "Text", "port": "Int"
-      },
-      "output_types": {"driver": "Dict", "report": "Text"},
-      "input_defaults": {
-        "preset": "so_arm101", "state_topic": "/joint_states", "command_topic": "/joint_commands",
-        "config_topic": "/joint_config", "rate_hz": 15.0, "transport": "auto",
-        "host": "127.0.0.1", "port": 9090
-      }
-    },
-    "robot_bridge": {
-      "id": "robot_bridge",
-      "type": "RobotDiscovery",
-      "params": {
+        "profile_id": "so_arm101",
         "action": "start",
         "run_id": "robot_driver",
-        "port_filter": "",
-        "probe_open": false,
-        "require_usb": true,
-        "serial_port": "",
+        "selection": 0,
         "host": "127.0.0.1",
         "port": 9090,
         "state_topic": "/joint_states",
@@ -1037,12 +1006,12 @@
       },
       "pos": [390.0, 995.0],
       "inputs": [
-        "trigger", "driver", "action", "run_id", "port_filter", "probe_open", "require_usb",
+        "trigger", "driver", "hardware", "action", "run_id", "port_filter", "probe_open", "require_usb",
         "serial_port", "host", "port", "state_topic", "command_topic", "config_topic", "units"
       ],
       "outputs": ["found", "ready", "usb_ready", "driver_running", "usb", "driver", "robot", "report"],
       "input_types": {
-        "trigger": "Any", "driver": "Dict", "action": "Text", "run_id": "Text", "port_filter": "Text",
+        "trigger": "Any", "driver": "Dict", "hardware": "Dict", "action": "Text", "run_id": "Text", "port_filter": "Text",
         "probe_open": "Bool", "require_usb": "Bool", "serial_port": "Text", "host": "Text",
         "port": "Int", "state_topic": "Text", "command_topic": "Text", "config_topic": "Text", "units": "Text"
       },
@@ -1207,41 +1176,35 @@
     {
       "from": "check",
       "from_port": "report",
-      "to": "robot_bridge",
+      "to": "robot",
       "to_port": "trigger"
     },
     {
-      "from": "preset",
-      "from_port": "driver",
-      "to": "robot_bridge",
-      "to_port": "driver"
-    },
-    {
-      "from": "robot_bridge",
+      "from": "robot",
       "from_port": "report",
       "to": "joint_state",
       "to_port": "trigger"
     },
     {
-      "from": "robot_bridge",
+      "from": "robot",
       "from_port": "report",
       "to": "follow_cube",
       "to_port": "trigger"
     },
     {
-      "from": "robot_bridge",
+      "from": "robot",
       "from_port": "robot",
       "to": "follow_cube",
       "to_port": "robot"
     },
     {
-      "from": "robot_bridge",
+      "from": "robot",
       "from_port": "robot",
       "to": "robot_profile_out",
       "to_port": "value"
     },
     {
-      "from": "robot_bridge",
+      "from": "robot",
       "from_port": "report",
       "to": "robot_discovery_report_out",
       "to_port": "value"

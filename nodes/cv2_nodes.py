@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
+import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -65,6 +68,118 @@ _OBJECT_WORDS = (
     "object",
     "target",
 )
+
+
+def _camera_candidates(max_devices: int) -> list[tuple[int | str, str]]:
+    if sys.platform.startswith("linux"):
+        candidates = []
+        for path in sorted(Path("/dev").glob("video*"))[:max_devices]:
+            label_path = Path("/sys/class/video4linux") / path.name / "name"
+            label = label_path.read_text(encoding="utf-8", errors="replace").strip() if label_path.exists() else path.name
+            candidates.append((str(path), label))
+        return candidates
+    labels: list[str] = []
+    if os.name == "nt":
+        try:
+            command = "Get-PnpDevice -PresentOnly | Where-Object {$_.Class -in @('Camera','Image')} | Select-Object -ExpandProperty FriendlyName"
+            result = subprocess.run(["powershell", "-NoProfile", "-Command", command], capture_output=True, text=True, timeout=3)
+            if result.returncode == 0:
+                labels = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        except Exception:
+            pass
+    return [(index, labels[index] if index < len(labels) else f"Camera {index}") for index in range(max_devices)]
+
+
+def _probe_backend(name: str) -> int | None:
+    if cv2 is None or name == "auto":
+        return None
+    mapping = {
+        "dshow": getattr(cv2, "CAP_DSHOW", None), "msmf": getattr(cv2, "CAP_MSMF", None),
+        "v4l2": getattr(cv2, "CAP_V4L2", None), "avfoundation": getattr(cv2, "CAP_AVFOUNDATION", None),
+        "any": getattr(cv2, "CAP_ANY", None),
+    }
+    return mapping.get(name)
+
+
+@node(name="CameraDiscovery", category="Camera", hidden=True,
+      description="Discover and probe connected cameras so a specific device can be selected before streaming.",
+      inputs={"refresh": AnyPort, "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
+              "max_devices": Int(default=8)},
+      outputs={"found": Bool, "count": Int, "devices": List, "recommended": Dict, "discovery": Dict, "report": Text})
+def cv2_camera_discovery(ctx: dict) -> dict:
+    if cv2 is None:
+        return {"found": False, "count": 0, "devices": [], "recommended": {}, "discovery": {},
+                "report": _missing_cv2_outputs()["report"]}
+    backend = str(ctx.get("backend") or "auto").lower()
+    api = _probe_backend(backend)
+    devices: list[dict[str, Any]] = []
+    for hardware_index, (device, label) in enumerate(
+        _camera_candidates(max(1, min(32, int(ctx.get("max_devices") or 8))))
+    ):
+        capture = None
+        try:
+            capture = cv2.VideoCapture(device) if api is None else cv2.VideoCapture(device, api)
+            if not capture.isOpened():
+                continue
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                continue
+            height, width = frame.shape[:2]
+            devices.append({
+                "kind": "blacknode.camera-device", "schema_version": 1,
+                "index": hardware_index, "device": str(device), "label": label,
+                "backend": backend, "width": int(width), "height": int(height),
+            })
+        except Exception:
+            continue
+        finally:
+            if capture is not None:
+                capture.release()
+    discovery = {"kind": "blacknode.camera-discovery", "schema_version": 1, "devices": devices, "backend": backend}
+    return {"found": bool(devices), "count": len(devices), "devices": devices,
+            "recommended": dict(devices[0]) if devices else {}, "discovery": discovery,
+            "report": f"found {len(devices)} camera(s)" if devices else "no usable cameras found"}
+
+
+@node(name="CV2CameraDiscovery", category="Camera", hidden=True,
+      description="Compatibility alias for CameraDiscovery.",
+      inputs={"refresh": AnyPort, "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
+              "max_devices": Int(default=8)},
+      outputs={"found": Bool, "count": Int, "devices": List, "recommended": Dict, "discovery": Dict, "report": Text})
+def cv2_camera_discovery_compat(ctx: dict) -> dict:
+    return cv2_camera_discovery(ctx)
+
+
+@node(name="CameraSelect", category="Camera", hidden=True,
+      description="Select one discovered camera by stable hardware index and emit its descriptor.",
+      inputs={"trigger": AnyPort, "discovery": Dict(default={}), "selection": Int(default=0)},
+      outputs={"selected": Bool, "camera": Dict, "device": Text, "backend": Text, "label": Text, "report": Text})
+def cv2_camera_select(ctx: dict) -> dict:
+    discovery = dict(ctx.get("discovery") or {})
+    devices = [item for item in discovery.get("devices", []) if isinstance(item, dict)]
+    selection = int(ctx.get("selection") or 0)
+    camera = next(
+        (
+            item for item in devices
+            if item.get("index") == selection or str(item.get("device", "")) == str(selection)
+        ),
+        None,
+    )
+    if camera is None:
+        return {"selected": False, "camera": {}, "device": "", "backend": "", "label": "",
+                "report": f"camera hardware index {selection} is unavailable; discovered {len(devices)} camera(s)"}
+    camera = dict(camera)
+    return {"selected": True, "camera": camera, "device": str(camera.get("device") or ""),
+            "backend": str(camera.get("backend") or "auto"), "label": str(camera.get("label") or f"Camera {selection}"),
+            "report": f"selected {camera.get('label') or camera.get('device')}"}
+
+
+@node(name="CV2CameraSelect", category="Camera", hidden=True,
+      description="Compatibility alias for CameraSelect.",
+      inputs={"trigger": AnyPort, "discovery": Dict(default={}), "selection": Int(default=0)},
+      outputs={"selected": Bool, "camera": Dict, "device": Text, "backend": Text, "label": Text, "report": Text})
+def cv2_camera_select_compat(ctx: dict) -> dict:
+    return cv2_camera_select(ctx)
 
 
 def _missing_cv2_outputs() -> dict[str, Any]:
@@ -566,14 +681,16 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
 
 
 @node(
-    name="CV2CameraStream",
+    name="CameraStream",
     live=True,
-    category=_CATEGORY,
+    category="Camera",
+    hidden=True,
     description="Open a local camera directly and serve live MJPEG and snapshot endpoints on Windows, Linux, or macOS.",
     inputs={
         "trigger": AnyPort,
         "action": Enum(["start", "stop"], default="start"),
         "stream_id": Text(default="local_camera"),
+        "camera": Dict(default={}),
         "device": Text(default="0"),
         "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
         "width": Int(default=640),
@@ -590,18 +707,25 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
         "stream_url": Text,
         "snapshot_url": Text,
         "health_url": Text,
+        "frame_stream": Dict,
         "stream_id": Text,
         "report": Text,
     },
 )
 def cv2_camera_stream(ctx: dict) -> dict:
-    stream_id = str(ctx.get("stream_id") or "local_camera").strip() or "local_camera"
+    camera = dict(ctx.get("camera") or {})
+    selected_device = str(camera.get("device") or "").strip()
+    stream_id = str(ctx.get("stream_id") or "").strip()
+    if not stream_id:
+        suffix = re.sub(r"[^a-zA-Z0-9_-]+", "_", selected_device).strip("_")
+        stream_id = f"camera_{suffix}" if suffix else "local_camera"
     empty = {
         "preview": "",
         "streaming": False,
         "stream_url": "",
         "snapshot_url": "",
         "health_url": "",
+        "frame_stream": {},
         "stream_id": stream_id,
     }
     if str(ctx.get("action") or "start").strip().lower() == "stop":
@@ -609,11 +733,12 @@ def cv2_camera_stream(ctx: dict) -> dict:
         return {**empty, "report": f"stopped {result.get('stopped', 0)} camera stream(s)"}
     if cv2 is None or np is None:
         return {**empty, "report": _missing_cv2_outputs()["report"]}
-    device = str(ctx.get("device") if ctx.get("device") is not None else "0").strip() or "0"
+    device = str(camera.get("device") if camera.get("device") is not None else ctx.get("device") if ctx.get("device") is not None else "0").strip() or "0"
+    backend = str(camera.get("backend") or ctx.get("backend") or "auto").strip().lower() or "auto"
     result = cv2_runtime.start_camera_stream(
         stream_id=stream_id,
         device=device,
-        backend=str(ctx.get("backend") or "auto").strip().lower() or "auto",
+        backend=backend,
         width=max(0, int(ctx.get("width") or 0)),
         height=max(0, int(ctx.get("height") or 0)),
         host=str(ctx.get("host") or "127.0.0.1").strip() or "127.0.0.1",
@@ -625,16 +750,152 @@ def cv2_camera_stream(ctx: dict) -> dict:
     if not result.get("ok"):
         return {**empty, "report": f"camera stream FAILED: {result.get('error', 'unknown error')}"}
     stream_url = str(result.get("stream_url") or "")
+    snapshot_url = str(result.get("snapshot_url") or "")
+    health_url = str(result.get("health_url") or "")
+    frame_stream = {
+        "kind": "blacknode.frame-stream",
+        "schema_version": 1,
+        "stream_id": stream_id,
+        "snapshot_url": snapshot_url,
+        "health_url": health_url,
+        "media_type": "image/jpeg",
+        "mode": "latest",
+        "clock": "unix_ns",
+    }
     health = result.get("health") if isinstance(result.get("health"), dict) else {}
     return {
         "preview": stream_url,
         "streaming": True,
         "stream_url": stream_url,
-        "snapshot_url": str(result.get("snapshot_url") or ""),
-        "health_url": str(result.get("health_url") or ""),
+        "snapshot_url": snapshot_url,
+        "health_url": health_url,
+        "frame_stream": frame_stream,
         "stream_id": stream_id,
         "report": f"LIVE CAMERA STREAM running on {stream_url}; {health.get('report', 'camera ready')}",
     }
+
+
+_CAMERA_STREAM_INPUTS = {
+    "trigger": AnyPort,
+    "action": Enum(["start", "stop"], default="start"),
+    "stream_id": Text(default="local_camera"),
+    "camera": Dict(default={}),
+    "device": Text(default="0"),
+    "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
+    "width": Int(default=640),
+    "height": Int(default=480),
+    "host": Text(default="127.0.0.1"),
+    "port": Int(default=0),
+    "max_fps": Float(default=15.0),
+    "max_width": Int(default=960),
+    "jpeg_quality": Int(default=82),
+}
+_CAMERA_STREAM_OUTPUTS = {
+    "preview": Image,
+    "streaming": Bool,
+    "stream_url": Text,
+    "snapshot_url": Text,
+    "health_url": Text,
+    "frame_stream": Dict,
+    "stream_id": Text,
+    "report": Text,
+}
+
+
+@node(name="CV2CameraStream", live=True, category="Camera", hidden=True,
+      description="Compatibility alias for CameraStream.",
+      inputs=_CAMERA_STREAM_INPUTS, outputs=_CAMERA_STREAM_OUTPUTS)
+def cv2_camera_stream_compat(ctx: dict) -> dict:
+    return cv2_camera_stream(ctx)
+
+
+@node(
+    name="Camera",
+    live=True,
+    category="Camera",
+    description="One easy camera node: discover connected cameras, select one by number, and show its live preview.",
+    primary_inputs=["trigger"],
+    primary_outputs=["preview", "frame_stream", "report"],
+    inputs={
+        "trigger": AnyPort,
+        "action": Enum(["start", "stop"], default="start"),
+        "selection": Int(default=0),
+        "stream_id": Text(default=""),
+        "camera": Dict(default={}),
+        "device": Text(default=""),
+        "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
+        "max_devices": Int(default=8),
+        "width": Int(default=640),
+        "height": Int(default=480),
+        "host": Text(default="127.0.0.1"),
+        "port": Int(default=0),
+        "max_fps": Float(default=15.0),
+        "max_width": Int(default=960),
+        "jpeg_quality": Int(default=82),
+    },
+    outputs={
+        "found": Bool,
+        "count": Int,
+        "devices": List,
+        "camera": Dict,
+        "label": Text,
+        **_CAMERA_STREAM_OUTPUTS,
+    },
+)
+def camera(ctx: dict) -> dict:
+    if str(ctx.get("action") or "start").strip().lower() == "stop" and str(ctx.get("stream_id") or "").strip():
+        streamed = cv2_camera_stream(ctx)
+        return {"found": False, "count": 0, "devices": [], "camera": {}, "label": "", **streamed}
+    supplied_camera = dict(ctx.get("camera") or {})
+    supplied_device = str(ctx.get("device") or "").strip()
+    if supplied_camera or supplied_device:
+        selected_camera = supplied_camera or {
+            "kind": "blacknode.camera-device", "schema_version": 1,
+            "device": supplied_device, "label": f"Camera {supplied_device}",
+            "backend": str(ctx.get("backend") or "auto"),
+        }
+        discovery = {"found": True, "count": 1, "devices": [selected_camera], "report": "using configured camera"}
+        selected = {"selected": True, "camera": selected_camera, "label": str(selected_camera.get("label") or supplied_device)}
+    else:
+        discovery = cv2_camera_discovery(ctx)
+        selected = cv2_camera_select({"discovery": discovery.get("discovery", {}), "selection": ctx.get("selection", 0)})
+        if not selected.get("selected"):
+            selection = int(ctx.get("selection") or 0)
+            candidates = _camera_candidates(max(1, min(32, int(ctx.get("max_devices") or 8))))
+            if 0 <= selection < len(candidates):
+                device, label = candidates[selection]
+                selected_camera = {
+                    "kind": "blacknode.camera-device",
+                    "schema_version": 1,
+                    "index": selection,
+                    "device": str(device),
+                    "label": label,
+                    "backend": str(ctx.get("backend") or "auto"),
+                }
+                selected = {
+                    "selected": True,
+                    "camera": selected_camera,
+                    "device": str(device),
+                    "backend": selected_camera["backend"],
+                    "label": label,
+                    "report": f"selected hardware camera {selection}",
+                }
+    base = {
+        "found": bool(discovery.get("found")),
+        "count": int(discovery.get("count") or 0),
+        "devices": list(discovery.get("devices") or []),
+        "camera": dict(selected.get("camera") or {}),
+        "label": str(selected.get("label") or ""),
+    }
+    if not selected.get("selected"):
+        return {
+            **base,
+            "preview": "", "streaming": False, "stream_url": "", "snapshot_url": "", "health_url": "",
+            "frame_stream": {}, "stream_id": str(ctx.get("stream_id") or ""),
+            "report": f"{discovery.get('report', '')}; {selected.get('report', '')}".strip("; "),
+        }
+    streamed = cv2_camera_stream({**ctx, "camera": selected["camera"]})
+    return {**base, **streamed}
 
 
 @node(

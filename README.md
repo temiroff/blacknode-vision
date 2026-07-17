@@ -27,6 +27,13 @@ This package expects `blacknode-ros2` when using the ROS camera templates:
 blacknode packages install https://github.com/temiroff/blacknode-ros2.git
 ```
 
+For direct local cameras, add one `Camera` node and set `selection` to `0`.
+Duplicate it and set `selection` to `1`, `2`, and so on for more cameras. The
+node handles discovery, selection, streaming, and live preview itself.
+Discovery, selection, streaming, and the older `CV2Camera*` node types remain
+registered internally for saved-workflow compatibility but stay out of the
+normal node palette.
+
 Build the bundled ROS 2 camera package:
 
 ```bash
@@ -61,6 +68,7 @@ rotation:=0
 
 | Node | What it does |
 |---|---|
+| `Camera` | Discovers, selects, and streams one local camera with a live preview; duplicate it for more cameras |
 | `VisionFramePrompt` | Builds a concise robot-vision prompt for one camera frame |
 | `VisionDetectionPrompt` | Builds an LLM prompt from CV2 detections for local reasoning |
 | `VisionStreamStatus` | Renders live camera stream readiness as a dashboard image |

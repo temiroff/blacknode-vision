@@ -77,6 +77,12 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
         capture, backend = open_camera(device, args.backend, args.width, args.height)
         frames = 0
         failures = 0
+        # USB cameras commonly emit black exposure/setup frames immediately after
+        # opening. Consume a short warm-up sequence before publishing the preview.
+        for _ in range(3):
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                time.sleep(0.05)
         while not state.stop.is_set():
             started = time.monotonic()
             ok, frame = capture.read()
@@ -106,6 +112,9 @@ def capture_loop(args: argparse.Namespace, state: SharedState) -> None:
                 width=int(frame.shape[1]),
                 height=int(frame.shape[0]),
                 updated_at=time.time(),
+                captured_at_ns=time.time_ns(),
+                monotonic_ns=time.monotonic_ns(),
+                frame_sequence=frames,
                 report=f"camera {device!r} streaming via {backend}",
             )
             delay = max(0.0, (1.0 / max(0.1, args.max_fps)) - (time.monotonic() - started))
@@ -140,6 +149,8 @@ def make_handler(state: SharedState, max_fps: float):
                 self.send_response(200)
                 self.send_header("Content-Type", "image/jpeg")
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Blacknode-Frame-Sequence", str(health.get("frame_sequence") or 0))
+                self.send_header("X-Blacknode-Captured-At-Ns", str(health.get("captured_at_ns") or 0))
                 self.send_header("Content-Length", str(len(jpeg)))
                 self.end_headers()
                 self.wfile.write(jpeg)

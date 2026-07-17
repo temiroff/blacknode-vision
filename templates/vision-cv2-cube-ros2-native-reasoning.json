@@ -38,11 +38,7 @@
         "name": "blacknode-robot",
         "git_url": "https://github.com/temiroff/blacknode-robot.git",
         "node_types": [
-          "RobotDiscovery",
-          "RobotDriverPreset",
-          "RobotDriverDescriptor",
-          "RobotDriverLauncher",
-          "RobotUSBDiscovery"
+          "Robot"
         ]
       },
       {
@@ -805,14 +801,12 @@
     },
     "robot": {
       "id": "robot",
-      "type": "RobotDiscovery",
+      "type": "Robot",
       "params": {
+        "profile_id": "so_arm101",
         "action": "start",
         "run_id": "robot_driver",
-        "port_filter": "",
-        "probe_open": false,
-        "require_usb": true,
-        "serial_port": "",
+        "selection": 0,
         "host": "127.0.0.1",
         "port": 9090,
         "state_topic": "/joint_states",
@@ -828,6 +822,7 @@
       "inputs": [
         "trigger",
         "driver",
+        "hardware",
         "action",
         "run_id",
         "port_filter",
@@ -854,6 +849,7 @@
       "input_types": {
         "trigger": "Any",
         "driver": "Dict",
+        "hardware": "Dict",
         "action": "Text",
         "run_id": "Text",
         "port_filter": "Text",
@@ -1029,50 +1025,6 @@
         "max_fps": 10,
         "max_width": 960,
         "jpeg_quality": 82
-      }
-    },
-    "preset": {
-      "id": "preset",
-      "type": "RobotDriverPreset",
-      "params": {
-        "preset": "so_arm101",
-        "state_topic": "/joint_states",
-        "command_topic": "/joint_commands",
-        "config_topic": "/joint_config",
-        "rate_hz": 15
-      },
-      "pos": [
-        80,
-        1193
-      ],
-      "inputs": [
-        "preset",
-        "state_topic",
-        "command_topic",
-        "config_topic",
-        "rate_hz"
-      ],
-      "outputs": [
-        "driver",
-        "report"
-      ],
-      "input_types": {
-        "preset": "Text",
-        "state_topic": "Text",
-        "command_topic": "Text",
-        "config_topic": "Text",
-        "rate_hz": "Float"
-      },
-      "output_types": {
-        "driver": "Dict",
-        "report": "Text"
-      },
-      "input_defaults": {
-        "preset": "so_arm101",
-        "state_topic": "/joint_states",
-        "command_topic": "/joint_commands",
-        "config_topic": "/joint_config",
-        "rate_hz": 15
       }
     },
     "joint_state": {
@@ -1318,12 +1270,6 @@
       "from_port": "state_url",
       "to": "cv2_stream",
       "to_port": "reasoning_state_url"
-    },
-    {
-      "from": "preset",
-      "from_port": "driver",
-      "to": "robot",
-      "to_port": "driver"
     },
     {
       "from": "robot",

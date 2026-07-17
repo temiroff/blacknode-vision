@@ -270,7 +270,23 @@ def start_camera_stream(
 ) -> dict[str, Any]:
     existing = _CAMERA_STREAMS.get(stream_id)
     if existing and existing.get("proc") is not None and existing["proc"].poll() is None:
-        return {"ok": True, "stream_id": stream_id, **{key: existing[key] for key in ("stream_url", "snapshot_url", "health_url")}}
+        requested = {
+            "device": device,
+            "backend": backend,
+            "width": width,
+            "height": height,
+            "max_fps": max_fps,
+            "max_width": max_width,
+            "jpeg_quality": jpeg_quality,
+        }
+        if all(existing.get(key) == value for key, value in requested.items()):
+            return {
+                "ok": True,
+                "stream_id": stream_id,
+                **{key: existing[key] for key in ("stream_url", "snapshot_url", "health_url")},
+                "health": existing.get("health", {}),
+            }
+        stop_camera_stream(stream_id)
     stop_camera_stream(stream_id)
     script = _camera_script_path()
     if not script.exists():
@@ -313,6 +329,11 @@ def start_camera_stream(
         "proc": proc,
         "device": device,
         "backend": backend,
+        "width": width,
+        "height": height,
+        "max_fps": max_fps,
+        "max_width": max_width,
+        "jpeg_quality": jpeg_quality,
         "stream_url": f"{base_url}/stream.mjpg",
         "snapshot_url": f"{base_url}/snapshot.jpg",
         "health_url": health_url,
