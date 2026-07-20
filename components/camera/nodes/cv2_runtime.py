@@ -18,15 +18,15 @@ _REASONING_STREAMS: dict[str, dict[str, Any]] = {}
 
 
 def _script_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "scripts" / "cv2_color_stream_server.py"
+    return Path(__file__).resolve().parents[3] / "scripts" / "cv2_color_stream_server.py"
 
 
 def _reasoning_script_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "scripts" / "vision_reasoning_stream_server.py"
+    return Path(__file__).resolve().parents[3] / "scripts" / "vision_reasoning_stream_server.py"
 
 
 def _camera_script_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "scripts" / "cv2_camera_stream_server.py"
+    return Path(__file__).resolve().parents[3] / "scripts" / "cv2_camera_stream_server.py"
 
 
 def _free_port(host: str) -> int:
