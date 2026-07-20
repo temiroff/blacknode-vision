@@ -1,4 +1,4 @@
-"""OpenCV nodes for Blacknode Vision."""
+"""Camera, calibration, and deterministic OpenCV nodes for Blacknode Perception."""
 from __future__ import annotations
 
 import base64

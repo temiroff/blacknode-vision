@@ -1,13 +1,75 @@
 [package]
 name = "blacknode-vision"
-version = "0.1.0"
-description = "Robot vision workflows for ROS 2 cameras, live VLM reasoning, OpenCV tracking, and stream dashboards."
-requires-blacknode = ">=0.1.0"
+version = "0.2.0"
+description = "Camera, tracking, VLM, and spatial-perception capabilities organized as selectable components."
+requires-blacknode = ">=0.3.0"
+layer = "perception"
+component-mode = true
 
 [categories]
 "Vision" = "#18a058"
 "CV2" = "#2563eb"
 
-[dependencies]
+[components.camera]
+description = "Camera discovery, calibration, managed streams, and deterministic OpenCV tracking."
+default = true
+capabilities = ["perception.camera", "perception.calibration", "perception.tracking.color"]
+nodes = ["components/camera/nodes"]
+module-root = true
+node-types = [
+  "Camera", "CameraCalibration", "CameraDiscovery", "CameraSelect", "CameraStream",
+  "CV2CameraDiscovery", "CV2CameraSelect", "CV2CameraStream", "CV2ColorObjectStream",
+  "CV2ColorObjectTracker", "CV2ColorTargetHint", "CV2HSVMask",
+]
+
+[components.camera.dependencies]
 pip = ["opencv-python>=4.8", "numpy>=1.24"]
 imports = ["cv2", "numpy"]
+
+[components.vlm]
+description = "Frame prompting, VLM description, reasoning streams, and visual dashboards."
+default = true
+capabilities = ["perception.vlm", "perception.reasoning"]
+nodes = ["components/vlm/nodes"]
+node-types = [
+  "VisionDetectionPrompt", "VisionFramePrompt", "VisionReasoningDashboard",
+  "VisionReasoningStream", "VisionStreamStatus", "VisionVLMDescribe",
+]
+
+[components.vlm.dependencies]
+requires = [{ package = "blacknode-vision", component = "camera", version = ">=0.2.0,<1.0.0" }]
+
+[components.depth]
+description = "Depth frames, alignment, validity, and deprojection contracts."
+default = false
+capabilities = ["perception.depth"]
+
+[components.lidar]
+description = "LiDAR scan streams and diagnostics."
+default = false
+capabilities = ["perception.lidar"]
+
+[components.imu]
+description = "IMU streams, filtering, and health contracts."
+default = false
+capabilities = ["perception.imu"]
+
+[components.detection]
+description = "Pluggable detection and segmentation contracts."
+default = false
+capabilities = ["perception.detection"]
+
+[components.tracking]
+description = "Multi-object identity and target tracking contracts."
+default = false
+capabilities = ["perception.tracking"]
+
+[components.slam]
+description = "Mapping and SLAM lifecycle contracts."
+default = false
+capabilities = ["perception.slam"]
+
+[components.localization]
+description = "Localization state, confidence, and recovery contracts."
+default = false
+capabilities = ["perception.localization"]

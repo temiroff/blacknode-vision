@@ -1,4 +1,4 @@
-"""Runtime helpers for live OpenCV streams started by blacknode-vision."""
+"""Runtime helpers for live OpenCV streams started by Blacknode Perception."""
 from __future__ import annotations
 
 import json

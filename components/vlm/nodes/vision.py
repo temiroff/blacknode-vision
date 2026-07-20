@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from . import cv2_runtime
+from blacknode.pkg.blacknode_vision import cv2_runtime
 
 from blacknode.node import Any as AnyPort
 from blacknode.node import Bool, Dict, Enum, Float, Image, Int, List, Text, node

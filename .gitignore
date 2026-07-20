@@ -8,6 +8,9 @@ dist/
 build/
 *.egg-info/
 workflows/
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 editor-server/
 *.log
 .env
