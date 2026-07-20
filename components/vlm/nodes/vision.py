@@ -308,7 +308,7 @@ def vision_detection_prompt(ctx: dict) -> dict:
 
 
 @node(
-    name="StreamStatus",
+    name="CameraDashboard",
     category=_CATEGORY,
     description="Render camera stream readiness as a dashboard image.",
     inputs={
@@ -361,7 +361,7 @@ def vision_stream_status(ctx: dict) -> dict:
 <rect x="24" y="24" width="852" height="{inner_height}" rx="14" fill="#162033" stroke="#263449"/>
 <circle cx="58" cy="72" r="12" fill="{color}"/>
 <text x="82" y="79" fill="{color}" font-size="24" font-weight="800" font-family="Inter, Arial">{status}</text>
-<text x="36" y="118" fill="#e5edf7" font-size="30" font-weight="800" font-family="Inter, Arial">Blacknode Vision Stream</text>
+<text x="36" y="118" fill="#e5edf7" font-size="30" font-weight="800" font-family="Inter, Arial">Camera</text>
 {row_svg}
 </svg>"""
     return {"dashboard": _svg_data(svg), "ready": ready, "report": report}

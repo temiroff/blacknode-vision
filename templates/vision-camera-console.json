@@ -4,18 +4,18 @@
   "name": "Camera Console",
   "saved_at": "2026-07-10T00:00:00",
   "entrypoint": {
-    "node_id": "image_out",
-    "port": "image"
+    "node_id": "status",
+    "port": "dashboard"
   },
   "metadata": {
     "template": true,
-    "description": "Start the local camera, stream it live, and show a vision status dashboard.",
+    "description": "Start the local camera, stream it live, and show a camera status dashboard.",
     "color": "#18a058",
     "required_packages": [
       {
         "name": "blacknode-perception",
         "git_url": "https://github.com/temiroff/blacknode-perception.git",
-        "node_types": ["Camera", "StreamStatus"]
+        "node_types": ["Camera", "CameraDashboard"]
       }
     ]
   },
@@ -81,9 +81,9 @@
     },
     "status": {
       "id": "status",
-      "type": "StreamStatus",
+      "type": "CameraDashboard",
       "params": {"camera_topic": "local camera 0"},
-      "pos": [1120, 40],
+      "pos": [1120, 160],
       "inputs": ["camera_topic", "stream_url", "streaming", "run_report", "stream_report"],
       "outputs": ["dashboard", "ready", "report"],
       "input_types": {
@@ -95,47 +95,11 @@
       },
       "output_types": {"dashboard": "Image", "ready": "Bool", "report": "Text"},
       "input_defaults": {"camera_topic": "local camera 0"}
-    },
-    "image_out": {
-      "id": "image_out",
-      "type": "OutputImage",
-      "params": {},
-      "pos": [1120, 360],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
-      "input_defaults": {}
-    },
-    "status_out": {
-      "id": "status_out",
-      "type": "OutputImage",
-      "params": {},
-      "pos": [1500, 40],
-      "inputs": ["image"],
-      "outputs": ["image"],
-      "input_types": {"image": "Image"},
-      "output_types": {"image": "Image"},
-      "input_defaults": {}
-    },
-    "report_out": {
-      "id": "report_out",
-      "type": "Output",
-      "params": {"label": "Vision camera report"},
-      "pos": [1500, 360],
-      "inputs": ["value"],
-      "outputs": [],
-      "input_types": {"value": "Any"},
-      "output_types": {},
-      "input_defaults": {}
     }
   },
   "edges": [
-    {"from": "stream", "from_port": "preview", "to": "image_out", "to_port": "image"},
     {"from": "stream", "from_port": "stream_url", "to": "status", "to_port": "stream_url"},
     {"from": "stream", "from_port": "streaming", "to": "status", "to_port": "streaming"},
-    {"from": "stream", "from_port": "report", "to": "status", "to_port": "stream_report"},
-    {"from": "status", "from_port": "dashboard", "to": "status_out", "to_port": "image"},
-    {"from": "status", "from_port": "report", "to": "report_out", "to_port": "value"}
+    {"from": "stream", "from_port": "report", "to": "status", "to_port": "stream_report"}
   ]
 }

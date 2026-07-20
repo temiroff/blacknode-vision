@@ -26,11 +26,11 @@ EXPECTED_NODES = {
     "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
     "CV2HSVMask": "CV2",
+    "CameraDashboard": "Perception",
     "DetectionPrompt": "Perception",
     "FramePrompt": "Perception",
     "ReasoningDashboard": "Perception",
     "ReasoningStream": "Perception",
-    "StreamStatus": "Perception",
     "VLM": "Perception",
 }
 
@@ -377,8 +377,8 @@ def test_cv2_camera_stream_reports_start_failure(monkeypatch):
     assert "camera busy" in result["report"]
 
 
-def test_stream_status_ready_dashboard():
-    result = _NODE_REGISTRY["StreamStatus"]({
+def test_camera_dashboard_ready():
+    result = _NODE_REGISTRY["CameraDashboard"]({
         "camera_topic": "/camera/image_raw",
         "stream_url": "http://127.0.0.1:9000/stream.mjpg",
         "streaming": True,
@@ -388,12 +388,12 @@ def test_stream_status_ready_dashboard():
     assert "LIVE" in result["report"]
 
 
-def test_stream_status_wraps_long_dashboard_text():
+def test_camera_dashboard_wraps_long_text():
     long_report = (
         "ROS 2 run process running: blacknode_usb_camera usb_camera; "
         "/camera/image_raw is discoverable via native backend with a long status message"
     )
-    result = _NODE_REGISTRY["StreamStatus"]({
+    result = _NODE_REGISTRY["CameraDashboard"]({
         "camera_topic": "/camera/image_raw",
         "stream_url": "http://127.0.0.1:12345/stream.mjpg?with=a-long-query-string-that-would-overflow",
         "streaming": True,

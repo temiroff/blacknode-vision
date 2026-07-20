@@ -33,7 +33,7 @@ capabilities = ["perception.vlm", "perception.reasoning"]
 nodes = ["components/vlm/nodes"]
 node-types = [
   "DetectionPrompt", "FramePrompt", "ReasoningDashboard",
-  "ReasoningStream", "StreamStatus", "VLM",
+  "ReasoningStream", "CameraDashboard", "VLM",
 ]
 
 [components.vlm.dependencies]

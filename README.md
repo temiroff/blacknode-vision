@@ -72,7 +72,7 @@ rotation:=0
 | `CameraCalibration` | Captures checkerboard views, solves intrinsics and field of view, and emits a calibrated camera stream |
 | `FramePrompt` | Builds a concise robot-vision prompt for one camera frame |
 | `DetectionPrompt` | Builds an LLM prompt from CV2 detections for local reasoning |
-| `StreamStatus` | Renders live camera stream readiness as a dashboard image |
+| `CameraDashboard` | Renders live camera stream readiness as a dashboard image |
 | `VLM` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
 | `ReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `ReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama or NVIDIA NIM |
