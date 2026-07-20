@@ -1,7 +1,7 @@
 {
   "kind": "blacknode.workflow",
   "schema_version": 1,
-  "name": "Blacknode Vision Frame VLM",
+  "name": "Frame VLM",
   "saved_at": "2026-07-10T00:00:00",
   "entrypoint": {
     "node_id": "vlm_out",
