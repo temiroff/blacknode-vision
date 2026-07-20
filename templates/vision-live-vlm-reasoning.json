@@ -15,7 +15,7 @@
       {
         "name": "blacknode-perception",
         "git_url": "https://github.com/temiroff/blacknode-perception.git",
-        "node_types": ["Camera", "FramePrompt", "VLMDescribe", "ReasoningDashboard"]
+        "node_types": ["Camera", "FramePrompt", "VLM", "ReasoningDashboard"]
       }
     ]
   },
@@ -108,11 +108,11 @@
     },
     "vlm": {
       "id": "vlm",
-      "type": "VLMDescribe",
+      "type": "VLM",
       "params": {
-        "provider": "openai-compatible",
-        "model": "gpt-4o-mini",
-        "endpoint_url": "https://api.openai.com/v1",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
         "max_tokens": 700,
         "temperature": 0.2,
@@ -137,9 +137,9 @@
       "input_defaults": {
         "question": "What do you see?",
         "system": "You are a precise robot vision assistant. Do not invent details. Return visible observations, supporting evidence, uncertainty, safety notes, and one next action.",
-        "provider": "openai-compatible",
-        "model": "gpt-4o-mini",
-        "endpoint_url": "https://api.openai.com/v1",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
         "max_tokens": 700,
         "temperature": 0.2,

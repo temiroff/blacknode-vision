@@ -31,7 +31,7 @@ EXPECTED_NODES = {
     "ReasoningDashboard": "Perception",
     "ReasoningStream": "Perception",
     "StreamStatus": "Perception",
-    "VLMDescribe": "Perception",
+    "VLM": "Perception",
 }
 
 
@@ -447,7 +447,7 @@ def test_vlm_describe_ollama_text_only(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"message": {"content": "move slightly left"}}
 
-    fn = _NODE_REGISTRY["VLMDescribe"]
+    fn = _NODE_REGISTRY["VLM"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -471,7 +471,7 @@ def test_vlm_describe_ollama_empty_content_reports_failure(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"message": {"content": "", "thinking": "internal reasoning is hidden"}}
 
-    fn = _NODE_REGISTRY["VLMDescribe"]
+    fn = _NODE_REGISTRY["VLM"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -497,7 +497,7 @@ def test_vlm_describe_ollama_retries_qwen3_length_stop(monkeypatch):
             return {"message": {"content": "", "thinking": "long hidden reasoning"}, "done_reason": "length"}
         return {"message": {"content": "Cube centered at (320, 240)."}, "done_reason": "stop"}
 
-    fn = _NODE_REGISTRY["VLMDescribe"]
+    fn = _NODE_REGISTRY["VLM"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -520,7 +520,7 @@ def test_vlm_describe_anthropic_image(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"content": [{"type": "text", "text": "A cube is visible."}]}
 
-    fn = _NODE_REGISTRY["VLMDescribe"]
+    fn = _NODE_REGISTRY["VLM"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
     result = fn({
@@ -704,7 +704,7 @@ def test_vision_reasoning_stream_stops_runtime(monkeypatch):
     assert "stopped 1 reasoning stream" in result["report"]
 
 def test_vlm_describe_requires_image():
-    result = _NODE_REGISTRY["VLMDescribe"]({"image": ""})
+    result = _NODE_REGISTRY["VLM"]({"image": ""})
     assert result["text"] == ""
     assert "FAILED" in result["report"]
 
@@ -713,7 +713,7 @@ def test_vlm_describe_requires_key_for_remote(monkeypatch):
     monkeypatch.delenv("VISION_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
-    result = _NODE_REGISTRY["VLMDescribe"]({
+    result = _NODE_REGISTRY["VLM"]({
         "image": "data:image/png;base64,abc",
         "endpoint_url": "https://api.openai.com/v1",
         "api_key": "",

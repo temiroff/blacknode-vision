@@ -186,8 +186,30 @@ def _post_json(url: str, body: dict[str, Any], headers: dict[str, str], timeout:
 
 
 def _format_http_error(exc: urllib.error.HTTPError, limit: int = 300) -> str:
-    detail = exc.read().decode("utf-8", errors="replace")
-    return f"HTTP {exc.code}: {_clip(detail, limit)}"
+    raw = exc.read().decode("utf-8", errors="replace")
+    try:
+        payload = json.loads(raw)
+        error = payload.get("error") if isinstance(payload, dict) else None
+        message = str((error or {}).get("message") or "").strip() if isinstance(error, dict) else ""
+        error_type = str((error or {}).get("type") or (error or {}).get("code") or "").strip() if isinstance(error, dict) else ""
+    except (json.JSONDecodeError, TypeError):
+        message, error_type = "", ""
+
+    if exc.code == 429 and error_type in {"insufficient_quota", "insufficient_quota_error"}:
+        return (
+            "HTTP 429: out of API quota/billing on this provider. "
+            "Add credits at your provider's billing page, or switch the "
+            "provider input to ollama for a free local model."
+        )
+    if exc.code == 429:
+        return f"HTTP 429: rate limited{f' ({_clip(message, limit)})' if message else ''}. Wait a moment and retry."
+    if exc.code == 401:
+        return f"HTTP 401: invalid or missing API key{f' ({_clip(message, limit)})' if message else ''}."
+    if exc.code == 403:
+        return f"HTTP 403: API key lacks permission for this model/endpoint{f' ({_clip(message, limit)})' if message else ''}."
+    if message:
+        return f"HTTP {exc.code}: {_clip(message, limit)}"
+    return f"HTTP {exc.code}: {_clip(raw, limit)}"
 
 
 @node(
@@ -346,16 +368,16 @@ def vision_stream_status(ctx: dict) -> dict:
 
 
 @node(
-    name="VLMDescribe",
+    name="VLM",
     category=_CATEGORY,
     description="Describe one image or detection prompt with OpenAI-compatible, Anthropic, or local Ollama chat.",
     inputs={
         "image": Image(default=""),
         "question": Text(default="What do you see?"),
         "system": Text(default="You are a precise robot vision assistant. Describe only what is visible."),
-        "provider": Enum(["openai-compatible", "nvidia", "anthropic", "ollama", "auto"], default="openai-compatible"),
-        "model": Text(default="gpt-4o-mini"),
-        "endpoint_url": Text(default="https://api.openai.com/v1"),
+        "provider": Enum(["openai-compatible", "nvidia", "anthropic", "ollama", "auto"], default="ollama"),
+        "model": Text(default="qwen3-vl:4b"),
+        "endpoint_url": Text(default="http://127.0.0.1:11434"),
         "api_key": Text(default=""),
         "max_tokens": Int(default=512),
         "temperature": Float(default=0.2),

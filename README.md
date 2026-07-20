@@ -73,7 +73,7 @@ rotation:=0
 | `FramePrompt` | Builds a concise robot-vision prompt for one camera frame |
 | `DetectionPrompt` | Builds an LLM prompt from CV2 detections for local reasoning |
 | `StreamStatus` | Renders live camera stream readiness as a dashboard image |
-| `VLMDescribe` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
+| `VLM` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
 | `ReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `ReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama or NVIDIA NIM |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
@@ -151,7 +151,7 @@ For a different camera index, edit `ROS2Run.arguments`, for example
 
 ## VLM and LLM endpoints
 
-`VLMDescribe` and `ReasoningStream` both support these providers:
+`VLM` and `ReasoningStream` both support these providers:
 
 | Provider | Endpoint | Key | Default model |
 |---|---|---|---|
@@ -188,12 +188,12 @@ set them yourself. The editor also renders `model` as a dropdown of your
 installed models (via `GET /ollama/models`) whenever `provider: ollama`.
 
 Qwen3 models can spend many tokens in Ollama's hidden thinking phase before
-returning final `content`, so `VLMDescribe` automatically raises
+returning final `content`, so `VLM` automatically raises
 `num_predict` to at least `4096` for Qwen3 models.
 
 If your installed Ollama model is text-only, keep `allow_text_only` enabled and
 feed it a `DetectionPrompt` from CV2 detections. If your model is a true
-local VLM, connect the camera snapshot image into `VLMDescribe.image`.
+local VLM, connect the camera snapshot image into `VLM.image`.
 
 Live reasoning uses a snapshot URL for inference, not the MJPEG stream itself.
 `ReasoningStream` periodically samples the current snapshot and serves an

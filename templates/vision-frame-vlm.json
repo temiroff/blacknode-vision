@@ -12,7 +12,7 @@
     "description": "Capture one ROS 2 camera frame, show it on the canvas, and send the frame to an OpenAI-compatible VLM endpoint for visual reasoning.",
     "color": "#18a058",
     "required_packages": [
-      {"name": "blacknode-perception", "git_url": "https://github.com/temiroff/blacknode-perception.git", "node_types": ["FramePrompt", "VLMDescribe"]},
+      {"name": "blacknode-perception", "git_url": "https://github.com/temiroff/blacknode-perception.git", "node_types": ["FramePrompt", "VLM"]},
       "blacknode-ros2"
     ]
   },
@@ -85,11 +85,11 @@
     },
     "vlm": {
       "id": "vlm",
-      "type": "VLMDescribe",
+      "type": "VLM",
       "params": {
-        "provider": "openai-compatible",
-        "model": "gpt-4o-mini",
-        "endpoint_url": "https://api.openai.com/v1",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
         "max_tokens": 512,
         "temperature": 0.2,
@@ -114,9 +114,9 @@
       "input_defaults": {
         "question": "What do you see?",
         "system": "You are a precise robot vision assistant. Describe only what is visible.",
-        "provider": "openai-compatible",
-        "model": "gpt-4o-mini",
-        "endpoint_url": "https://api.openai.com/v1",
+        "provider": "ollama",
+        "model": "qwen3-vl:4b",
+        "endpoint_url": "http://127.0.0.1:11434",
         "api_key": "",
         "max_tokens": 512,
         "temperature": 0.2,
