@@ -22,7 +22,7 @@ from blacknode.pkg.blacknode_perception import cv2_runtime
 from blacknode.node import Any as AnyPort
 from blacknode.node import Bool, Dict, Enum, Float, Image, Int, List, Text, node
 
-_CATEGORY = "Vision"
+_CATEGORY = "Perception"
 _OPENAI_COMPATIBLE_DEFAULT_ENDPOINT = "https://api.openai.com/v1"
 _OPENAI_COMPATIBLE_DEFAULT_MODEL = "gpt-4o-mini"
 # Nemotron Nano VL is NVIDIA's own open-weight vision-language model -- the
@@ -191,7 +191,7 @@ def _format_http_error(exc: urllib.error.HTTPError, limit: int = 300) -> str:
 
 
 @node(
-    name="VisionFramePrompt",
+    name="FramePrompt",
     category=_CATEGORY,
     description="Build a concise VLM prompt for a camera frame and robot task.",
     inputs={
@@ -238,7 +238,7 @@ def vision_frame_prompt(ctx: dict) -> dict:
 
 
 @node(
-    name="VisionDetectionPrompt",
+    name="DetectionPrompt",
     category=_CATEGORY,
     description="Build an LLM prompt from CV2 detections so local text models can reason about robot actions.",
     inputs={
@@ -286,7 +286,7 @@ def vision_detection_prompt(ctx: dict) -> dict:
 
 
 @node(
-    name="VisionStreamStatus",
+    name="StreamStatus",
     category=_CATEGORY,
     description="Render camera stream readiness as a dashboard image.",
     inputs={
@@ -346,7 +346,7 @@ def vision_stream_status(ctx: dict) -> dict:
 
 
 @node(
-    name="VisionVLMDescribe",
+    name="VLMDescribe",
     category=_CATEGORY,
     description="Describe one image or detection prompt with OpenAI-compatible, Anthropic, or local Ollama chat.",
     inputs={
@@ -560,7 +560,7 @@ def _svg_multiline_text(lines: list[str], *, x: int, y: int, fill: str, size: in
 
 
 @node(
-    name="VisionReasoningDashboard",
+    name="ReasoningDashboard",
     category=_CATEGORY,
     description="Render a captured camera frame with the VLM's visible observations, evidence, uncertainty, and action.",
     inputs={
@@ -635,7 +635,7 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
 
 
 @node(
-    name="VisionReasoningStream",
+    name="ReasoningStream",
     live=True,
     category=_CATEGORY,
     description="Start or stop a live MJPEG dashboard that periodically describes a camera image (local Ollama or NVIDIA NIM).",

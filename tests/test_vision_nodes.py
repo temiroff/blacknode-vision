@@ -26,12 +26,12 @@ EXPECTED_NODES = {
     "CV2ColorTargetHint": "CV2",
     "CV2ColorObjectTracker": "CV2",
     "CV2HSVMask": "CV2",
-    "VisionDetectionPrompt": "Vision",
-    "VisionFramePrompt": "Vision",
-    "VisionReasoningDashboard": "Vision",
-    "VisionReasoningStream": "Vision",
-    "VisionStreamStatus": "Vision",
-    "VisionVLMDescribe": "Vision",
+    "DetectionPrompt": "Perception",
+    "FramePrompt": "Perception",
+    "ReasoningDashboard": "Perception",
+    "ReasoningStream": "Perception",
+    "StreamStatus": "Perception",
+    "VLMDescribe": "Perception",
 }
 
 
@@ -66,7 +66,7 @@ def test_camera_console_defaults_to_bundled_usb_camera():
 
 
 def test_frame_prompt_summarizes_context():
-    result = _NODE_REGISTRY["VisionFramePrompt"]({
+    result = _NODE_REGISTRY["FramePrompt"]({
         "image": "data:image/png;base64,abc",
         "question": "Is the table clear?",
         "context": "bench camera",
@@ -79,7 +79,7 @@ def test_frame_prompt_summarizes_context():
 
 
 def test_detection_prompt_summarizes_cv2_output():
-    result = _NODE_REGISTRY["VisionDetectionPrompt"]({
+    result = _NODE_REGISTRY["DetectionPrompt"]({
         "detection": {
             "found": True,
             "label": "cube",
@@ -378,7 +378,7 @@ def test_cv2_camera_stream_reports_start_failure(monkeypatch):
 
 
 def test_stream_status_ready_dashboard():
-    result = _NODE_REGISTRY["VisionStreamStatus"]({
+    result = _NODE_REGISTRY["StreamStatus"]({
         "camera_topic": "/camera/image_raw",
         "stream_url": "http://127.0.0.1:9000/stream.mjpg",
         "streaming": True,
@@ -393,7 +393,7 @@ def test_stream_status_wraps_long_dashboard_text():
         "ROS 2 run process running: blacknode_usb_camera usb_camera; "
         "/camera/image_raw is discoverable via native backend with a long status message"
     )
-    result = _NODE_REGISTRY["VisionStreamStatus"]({
+    result = _NODE_REGISTRY["StreamStatus"]({
         "camera_topic": "/camera/image_raw",
         "stream_url": "http://127.0.0.1:12345/stream.mjpg?with=a-long-query-string-that-would-overflow",
         "streaming": True,
@@ -407,7 +407,7 @@ def test_stream_status_wraps_long_dashboard_text():
 
 
 def test_reasoning_dashboard_includes_image_and_answer():
-    result = _NODE_REGISTRY["VisionReasoningDashboard"]({
+    result = _NODE_REGISTRY["ReasoningDashboard"]({
         "image": "data:image/jpeg;base64,abc",
         "prompt": "Describe what the robot sees.",
         "answer": "Summary: a workbench is visible. Evidence: flat surface and tools. Next action: wait.",
@@ -421,7 +421,7 @@ def test_reasoning_dashboard_includes_image_and_answer():
 
 
 def test_reasoning_dashboard_inlines_url_image(monkeypatch):
-    fn = _NODE_REGISTRY["VisionReasoningDashboard"]
+    fn = _NODE_REGISTRY["ReasoningDashboard"]
 
     def fake_image_data_parts(image):
         assert image == "http://127.0.0.1:9100/snapshot.jpg"
@@ -447,7 +447,7 @@ def test_vlm_describe_ollama_text_only(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"message": {"content": "move slightly left"}}
 
-    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    fn = _NODE_REGISTRY["VLMDescribe"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -471,7 +471,7 @@ def test_vlm_describe_ollama_empty_content_reports_failure(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"message": {"content": "", "thinking": "internal reasoning is hidden"}}
 
-    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    fn = _NODE_REGISTRY["VLMDescribe"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -497,7 +497,7 @@ def test_vlm_describe_ollama_retries_qwen3_length_stop(monkeypatch):
             return {"message": {"content": "", "thinking": "long hidden reasoning"}, "done_reason": "length"}
         return {"message": {"content": "Cube centered at (320, 240)."}, "done_reason": "stop"}
 
-    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    fn = _NODE_REGISTRY["VLMDescribe"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     result = fn({
         "image": "",
@@ -520,7 +520,7 @@ def test_vlm_describe_anthropic_image(monkeypatch):
         calls.append({"url": url, "body": body, "headers": headers, "timeout": timeout})
         return {"content": [{"type": "text", "text": "A cube is visible."}]}
 
-    fn = _NODE_REGISTRY["VisionVLMDescribe"]
+    fn = _NODE_REGISTRY["VLMDescribe"]
     monkeypatch.setitem(fn.__globals__, "_post_json", fake_post_json)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
     result = fn({
@@ -662,7 +662,7 @@ def test_cv2_color_object_stream_stops_runtime(monkeypatch):
 
 
 def test_vision_reasoning_stream_starts_runtime(monkeypatch):
-    fn = _NODE_REGISTRY["VisionReasoningStream"]
+    fn = _NODE_REGISTRY["ReasoningStream"]
     calls = []
 
     def fake_start_reasoning_stream(**kwargs):
@@ -692,7 +692,7 @@ def test_vision_reasoning_stream_starts_runtime(monkeypatch):
 
 
 def test_vision_reasoning_stream_stops_runtime(monkeypatch):
-    fn = _NODE_REGISTRY["VisionReasoningStream"]
+    fn = _NODE_REGISTRY["ReasoningStream"]
 
     def fake_stop_reasoning_stream(stream_id):
         assert stream_id == "reason"
@@ -704,7 +704,7 @@ def test_vision_reasoning_stream_stops_runtime(monkeypatch):
     assert "stopped 1 reasoning stream" in result["report"]
 
 def test_vlm_describe_requires_image():
-    result = _NODE_REGISTRY["VisionVLMDescribe"]({"image": ""})
+    result = _NODE_REGISTRY["VLMDescribe"]({"image": ""})
     assert result["text"] == ""
     assert "FAILED" in result["report"]
 
@@ -713,7 +713,7 @@ def test_vlm_describe_requires_key_for_remote(monkeypatch):
     monkeypatch.delenv("VISION_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
-    result = _NODE_REGISTRY["VisionVLMDescribe"]({
+    result = _NODE_REGISTRY["VLMDescribe"]({
         "image": "data:image/png;base64,abc",
         "endpoint_url": "https://api.openai.com/v1",
         "api_key": "",

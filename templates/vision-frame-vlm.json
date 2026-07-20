@@ -12,7 +12,7 @@
     "description": "Capture one ROS 2 camera frame, show it on the canvas, and send the frame to an OpenAI-compatible VLM endpoint for visual reasoning.",
     "color": "#18a058",
     "required_packages": [
-      {"name": "blacknode-perception", "git_url": "https://github.com/temiroff/blacknode-perception.git", "node_types": ["VisionFramePrompt", "VisionVLMDescribe"]},
+      {"name": "blacknode-perception", "git_url": "https://github.com/temiroff/blacknode-perception.git", "node_types": ["FramePrompt", "VLMDescribe"]},
       "blacknode-ros2"
     ]
   },
@@ -58,7 +58,7 @@
     },
     "prompt": {
       "id": "prompt",
-      "type": "VisionFramePrompt",
+      "type": "FramePrompt",
       "params": {
         "question": "What does the robot camera see, and what should the robot do next?",
         "context": "Live robot camera frame",
@@ -85,7 +85,7 @@
     },
     "vlm": {
       "id": "vlm",
-      "type": "VisionVLMDescribe",
+      "type": "VLMDescribe",
       "params": {
         "provider": "openai-compatible",
         "model": "gpt-4o-mini",

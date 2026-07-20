@@ -70,12 +70,12 @@ rotation:=0
 |---|---|
 | `Camera` | Discovers, selects, and streams one local camera with a live preview; duplicate it for more cameras |
 | `CameraCalibration` | Captures checkerboard views, solves intrinsics and field of view, and emits a calibrated camera stream |
-| `VisionFramePrompt` | Builds a concise robot-vision prompt for one camera frame |
-| `VisionDetectionPrompt` | Builds an LLM prompt from CV2 detections for local reasoning |
-| `VisionStreamStatus` | Renders live camera stream readiness as a dashboard image |
-| `VisionVLMDescribe` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
-| `VisionReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
-| `VisionReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama or NVIDIA NIM |
+| `FramePrompt` | Builds a concise robot-vision prompt for one camera frame |
+| `DetectionPrompt` | Builds an LLM prompt from CV2 detections for local reasoning |
+| `StreamStatus` | Renders live camera stream readiness as a dashboard image |
+| `VLMDescribe` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
+| `ReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
+| `ReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama or NVIDIA NIM |
 | `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
 | `CV2ColorTargetHint` | Converts target/reasoning text like `track red cube` into label and HSV settings for CV2 tracking |
 | `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
@@ -151,7 +151,7 @@ For a different camera index, edit `ROS2Run.arguments`, for example
 
 ## VLM and LLM endpoints
 
-`VisionVLMDescribe` and `VisionReasoningStream` both support these providers:
+`VLMDescribe` and `ReasoningStream` both support these providers:
 
 | Provider | Endpoint | Key | Default model |
 |---|---|---|---|
@@ -188,15 +188,15 @@ set them yourself. The editor also renders `model` as a dropdown of your
 installed models (via `GET /ollama/models`) whenever `provider: ollama`.
 
 Qwen3 models can spend many tokens in Ollama's hidden thinking phase before
-returning final `content`, so `VisionVLMDescribe` automatically raises
+returning final `content`, so `VLMDescribe` automatically raises
 `num_predict` to at least `4096` for Qwen3 models.
 
 If your installed Ollama model is text-only, keep `allow_text_only` enabled and
-feed it a `VisionDetectionPrompt` from CV2 detections. If your model is a true
-local VLM, connect the camera snapshot image into `VisionVLMDescribe.image`.
+feed it a `DetectionPrompt` from CV2 detections. If your model is a true
+local VLM, connect the camera snapshot image into `VLMDescribe.image`.
 
 Live reasoning uses a snapshot URL for inference, not the MJPEG stream itself.
-`VisionReasoningStream` periodically samples the current snapshot and serves an
+`ReasoningStream` periodically samples the current snapshot and serves an
 MJPEG reasoning dashboard, so the visible panel keeps updating while the camera
 and tracker streams run. The CV2 local-reasoning template defaults to
 `interval_seconds: 3.0` and dashboard `max_fps: 4.0`; actual reasoning updates
@@ -219,7 +219,7 @@ directly to CV2:
 
 ```text
 Text target prompt
-  -> VisionReasoningStream
+  -> ReasoningStream
   -> CV2ColorObjectStream.reasoning_state_url
 ```
 

@@ -15,7 +15,7 @@
       {
         "name": "blacknode-perception",
         "git_url": "https://github.com/temiroff/blacknode-perception.git",
-        "node_types": ["VisionFramePrompt", "VisionVLMDescribe", "VisionReasoningDashboard", "VisionStreamStatus"]
+        "node_types": ["FramePrompt", "VLMDescribe", "ReasoningDashboard", "StreamStatus"]
       },
       "blacknode-ros2"
     ]
@@ -152,7 +152,7 @@
     },
     "prompt": {
       "id": "prompt",
-      "type": "VisionFramePrompt",
+      "type": "FramePrompt",
       "params": {
         "question": "Describe what the robot sees. Include visible evidence, uncertainty, safety concerns, and the next useful robot action.",
         "context": "Live Blacknode USB camera frame",
@@ -179,7 +179,7 @@
     },
     "vlm": {
       "id": "vlm",
-      "type": "VisionVLMDescribe",
+      "type": "VLMDescribe",
       "params": {
         "provider": "openai-compatible",
         "model": "gpt-4o-mini",
@@ -220,7 +220,7 @@
     },
     "reasoning": {
       "id": "reasoning",
-      "type": "VisionReasoningDashboard",
+      "type": "ReasoningDashboard",
       "params": {"title": "Blacknode Vision Reasoning"},
       "pos": [1880, 250],
       "inputs": ["image", "answer", "prompt", "report", "title"],
