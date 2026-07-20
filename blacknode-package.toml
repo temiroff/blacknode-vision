@@ -1,5 +1,5 @@
 [package]
-name = "blacknode-vision"
+name = "blacknode-perception"
 version = "0.2.0"
 description = "Camera, tracking, VLM, and spatial-perception capabilities organized as selectable components."
 requires-blacknode = ">=0.3.0"
@@ -37,7 +37,7 @@ node-types = [
 ]
 
 [components.vlm.dependencies]
-requires = [{ package = "blacknode-vision", component = "camera", version = ">=0.2.0,<1.0.0" }]
+requires = [{ package = "blacknode-perception", component = "camera", version = ">=0.2.0,<1.0.0" }]
 
 [components.depth]
 description = "Depth frames, alignment, validity, and deprojection contracts."

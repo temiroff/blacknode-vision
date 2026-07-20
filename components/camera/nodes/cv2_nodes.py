@@ -317,7 +317,7 @@ def cv2_camera_select_compat(ctx: dict) -> dict:
 def _missing_cv2_outputs() -> dict[str, Any]:
     report = (
         "CV2 node FAILED: OpenCV is not installed in this Blacknode Python environment. "
-        "Run: blacknode packages setup blacknode-vision"
+        "Run: blacknode packages setup blacknode-perception"
     )
     if _CV2_IMPORT_ERROR:
         report += f" ({_CV2_IMPORT_ERROR})"

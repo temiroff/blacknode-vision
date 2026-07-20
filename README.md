@@ -1,4 +1,4 @@
-# blacknode-vision
+# blacknode-perception
 
 **Robot vision nodes for [Blacknode](https://github.com/temiroff/Blacknode).**
 
@@ -8,7 +8,7 @@ stream ROS 2 images, inspect VLM reasoning, track objects with OpenCV, and
 drive it all from workflows or AI agents over MCP.
 
 It composes with `blacknode-ros2`: ROS 2 handles camera transport, topic
-inspection, snapshots, and streams, while `blacknode-vision` adds
+inspection, snapshots, and streams, while `blacknode-perception` adds
 vision-specific workflow pieces: a bundled generic USB camera ROS 2 node,
 camera consoles, frame prompts, stream dashboards, OpenCV tracking, and
 optional VLM/LLM inspection.
@@ -18,7 +18,7 @@ optional VLM/LLM inspection.
 From the Blacknode repo root:
 
 ```bash
-blacknode packages install https://github.com/temiroff/blacknode-vision.git
+blacknode packages install https://github.com/temiroff/blacknode-perception.git
 ```
 
 This package expects `blacknode-ros2` when using the ROS camera templates:
@@ -37,11 +37,11 @@ normal node palette.
 Build the bundled ROS 2 camera package:
 
 ```bash
-blacknode packages setup blacknode-vision
+blacknode packages setup blacknode-perception
 ```
 
 If your Blacknode build does not run package setup scripts yet, run
-`bash packages/blacknode-vision/scripts/setup.sh` from the Blacknode repo root.
+`bash packages/blacknode-perception/scripts/setup.sh` from the Blacknode repo root.
 
 Restart Blacknode, or press **Reload** in the editor's Packages tab.
 
@@ -272,13 +272,13 @@ and verification commands.
 Run tests from the Blacknode repo root:
 
 ```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/python -m pytest packages/blacknode-vision/tests
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/python -m pytest packages/blacknode-perception/tests
 ```
 
 Validate templates:
 
 ```bash
-for f in packages/blacknode-vision/templates/*.json; do .venv/bin/blacknode validate "$f"; done
+for f in packages/blacknode-perception/templates/*.json; do .venv/bin/blacknode validate "$f"; done
 ```
 
 ## License

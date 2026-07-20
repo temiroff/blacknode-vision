@@ -1,4 +1,4 @@
-"""blacknode-vision package contracts."""
+"""blacknode-perception package contracts."""
 import base64
 import importlib.util
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 import blacknode  # noqa: F401  triggers package discovery
-from blacknode.pkg.blacknode_vision import cv2_runtime
+from blacknode.pkg.blacknode_perception import cv2_runtime
 from blacknode.node import _NODE_REGISTRY
 from blacknode.workflow import validate_workflow
 
@@ -38,7 +38,7 @@ EXPECTED_NODES = {
 def test_nodes_registered_with_package_and_category():
     for name, category in EXPECTED_NODES.items():
         assert name in _NODE_REGISTRY, name
-        assert _NODE_REGISTRY[name]._bn_package == "blacknode-vision"
+        assert _NODE_REGISTRY[name]._bn_package == "blacknode-perception"
         assert _NODE_REGISTRY[name]._bn_category == category
 
 

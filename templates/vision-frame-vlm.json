@@ -12,7 +12,7 @@
     "description": "Capture one ROS 2 camera frame, show it on the canvas, and send the frame to an OpenAI-compatible VLM endpoint for visual reasoning.",
     "color": "#18a058",
     "required_packages": [
-      {"name": "blacknode-vision", "git_url": "https://github.com/temiroff/blacknode-vision.git", "node_types": ["VisionFramePrompt", "VisionVLMDescribe"]},
+      {"name": "blacknode-perception", "git_url": "https://github.com/temiroff/blacknode-perception.git", "node_types": ["VisionFramePrompt", "VisionVLMDescribe"]},
       "blacknode-ros2"
     ]
   },

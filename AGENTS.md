@@ -1,4 +1,4 @@
-# blacknode-vision Agent Instructions
+# blacknode-perception Agent Instructions
 
 This is an independent extension-package repository. Check and commit its Git
 state separately from the Blacknode core checkout that may contain it.
@@ -29,8 +29,8 @@ From the Blacknode root:
 
 ```powershell
 $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD="1"
-python -m pytest packages/blacknode-vision/tests
-Get-ChildItem packages\blacknode-vision\templates\*.json | ForEach-Object { blacknode validate $_.FullName }
+python -m pytest packages/blacknode-perception/tests
+Get-ChildItem packages\blacknode-perception\templates\*.json | ForEach-Object { blacknode validate $_.FullName }
 ```
 
 Report camera, ROS, GPU, or model paths that were not exercised. See the
