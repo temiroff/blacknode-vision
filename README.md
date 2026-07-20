@@ -106,48 +106,19 @@ metadata for later replay, simulation, and training workflows.
 
 ## Templates
 
-- **Blacknode Vision Camera Console** — start `blacknode_usb_camera usb_camera`,
-  stream `/camera/image_raw`, and show a live status dashboard.
-- **Blacknode Vision Frame VLM** — capture one ROS 2 camera frame, show it on
-  the canvas, and send it to a VLM endpoint.
-- **Blacknode Vision Live VLM Reasoning** — start the USB camera, keep the live
-  stream visible, capture one frame, call the VLM, and render a reasoning
-  dashboard beside the image.
-- **Blacknode Vision CV2 Cube Direct Camera Follow** — open the USB camera
-  directly through OpenCV on Windows, Linux, or macOS, run live image-first
-  Ollama/Qwen reasoning, and stream the tracking overlay and mask without a ROS
-  camera publisher.
-- **Blacknode Vision CV2 Cube Native ROS 2 Camera Follow** — start the bundled
-  native ROS 2 USB camera publisher on Linux, consume `/camera/image_raw`, and
-  keep camera frames available to ROS tools while using native ROS 2 robot
-  control. Rosbridge is not required.
-- **Blacknode Vision CV2 Cube Rosbridge Follow** — run the same live
-  CV2/Qwen cube tracking flow, add a real-time CUDA Sobel preview, and command
-  the robot through `blacknode-ros2` at `ws://127.0.0.1:9090`. Its persistent
-  10 Hz visual-servo controller consumes the detection stream continuously;
-  camera movement does not re-cook the graph.
+- **Camera Console** — start the local camera, stream it live, and show a
+  status dashboard.
+- **Live VLM Reasoning** — start the local camera, keep the live stream
+  visible, send frames to a VLM, and render a reasoning dashboard beside the
+  image.
 
-For the common case, `./start.sh` auto-sources `/opt/ros/jazzy/setup.bash` and
-auto-sources a ROS workspace when it finds exactly one `ros2_ws/install/setup.bash`.
-If you have multiple ROS workspaces, source the one you want before starting
-Blacknode so the overlay order is explicit:
+Both default to the native `Camera` node (OpenCV/DirectShow, no ROS 2 or
+Docker required). For a different camera index, edit the node's `selection`
+input.
 
-```bash
-source /opt/ros/jazzy/setup.bash
-source /path/to/ros2_ws/install/setup.bash
-./start.sh
-```
-
-Then load **Blacknode Vision Camera Console**. It defaults to:
-
-```text
-package: blacknode_usb_camera
-executable: usb_camera
-expected_topic: /camera/image_raw
-```
-
-For a different camera index, edit `ROS2Run.arguments`, for example
-`-p device:=1`.
+CV2 color-object tracking and follow-target templates (cube/target tracking,
+ROS 2 or rosbridge robot control) live in `blacknode-skills`' `follow-person`
+component now, not here.
 
 ## VLM and LLM endpoints
 

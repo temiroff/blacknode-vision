@@ -8,7 +8,6 @@ from pathlib import Path
 _TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 _EXPECTED_ROBOTS = {
     "vision-camera-console.json": {},
-    "vision-frame-vlm.json": {},
     "vision-live-vlm-reasoning.json": {},
 }
 
