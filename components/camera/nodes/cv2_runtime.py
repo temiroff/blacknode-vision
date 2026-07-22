@@ -258,6 +258,7 @@ def start_color_stream(
 def start_camera_stream(
     *,
     stream_id: str,
+    node_id: str = "",
     device: str,
     backend: str,
     width: int,
@@ -333,6 +334,7 @@ def start_camera_stream(
         return {"ok": False, "error": str(health.get("report") or f"camera {device!r} did not produce a frame")}
     item = {
         "proc": proc,
+        "node_id": node_id,
         "device": device,
         "backend": backend,
         "width": width,
@@ -590,6 +592,9 @@ def runtime_status() -> dict[str, Any]:
             continue
         camera_streams.append({
             "stream_id": stream_id,
+            # Which graph node started it: the runtime id is derived here, not
+            # stored in the graph, so the editor cannot work it out on its own.
+            "node_id": item.get("node_id", ""),
             "device": item.get("device", ""),
             "backend": item.get("backend", ""),
             "stream_url": item.get("stream_url", ""),

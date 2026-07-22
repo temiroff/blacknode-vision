@@ -349,6 +349,9 @@ def cv2_camera_stream(ctx: dict) -> dict:
     backend = str(camera.get("backend") or ctx.get("backend") or "auto").strip().lower() or "auto"
     result = cv2_runtime.start_camera_stream(
         stream_id=stream_id,
+        # Lets the editor reattach this stream to the node that owns it after a
+        # tab switch; stream_id is derived here, so the graph never sees it.
+        node_id=str(ctx.get("__node_id__") or ""),
         device=device,
         backend=backend,
         width=max(0, int(ctx.get("width") or 0)),
