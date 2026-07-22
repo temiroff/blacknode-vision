@@ -18,8 +18,7 @@ capabilities = ["perception.camera", "perception.calibration", "perception.track
 nodes = ["components/camera/nodes"]
 module-root = true
 node-types = [
-  "Camera", "CameraCalibration", "CameraDiscovery", "CameraSelect", "CameraStream",
-  "CV2CameraDiscovery", "CV2CameraSelect", "CV2CameraStream", "CV2ColorObjectStream",
+  "Camera", "CameraCalibration", "CameraDiscovery", "CameraSelect", "CameraStream", "CV2ColorObjectStream",
   "CV2ColorObjectTracker", "CV2ColorTargetHint", "CV2HSVMask",
 ]
 

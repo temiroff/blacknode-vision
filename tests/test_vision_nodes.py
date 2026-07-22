@@ -20,9 +20,6 @@ EXPECTED_NODES = {
     "CameraDiscovery": "Camera",
     "CameraSelect": "Camera",
     "CameraStream": "Camera",
-    "CV2CameraDiscovery": "Camera",
-    "CV2CameraSelect": "Camera",
-    "CV2CameraStream": "Camera",
     "CV2ColorObjectStream": "Tracking",
     "CV2ColorTargetHint": "Tracking",
     "CV2ColorObjectTracker": "Tracking",
@@ -47,7 +44,7 @@ def test_only_camera_facade_is_public_camera_setup():
     assert _NODE_REGISTRY["Camera"]._bn_hidden is False
     assert _NODE_REGISTRY["Camera"]._bn_primary_inputs == ["trigger"]
     assert _NODE_REGISTRY["Camera"]._bn_primary_outputs == ["preview", "frame_stream", "report"]
-    for name in ("CameraDiscovery", "CameraSelect", "CameraStream", "CV2CameraDiscovery", "CV2CameraSelect", "CV2CameraStream"):
+    for name in ("CameraDiscovery", "CameraSelect", "CameraStream"):
         assert _NODE_REGISTRY[name]._bn_hidden is True
 
 
@@ -187,8 +184,8 @@ def test_cv2_stream_runtime_pushes_live_config(monkeypatch):
     }]
 
 
-def test_cv2_camera_stream_starts_native_runtime(monkeypatch):
-    fn = _NODE_REGISTRY["CV2CameraStream"]
+def test_camera_stream_starts_native_runtime(monkeypatch):
+    fn = _NODE_REGISTRY["CameraStream"]
     calls = []
 
     def fake_start_camera_stream(**kwargs):
@@ -365,7 +362,7 @@ def test_camera_combines_discovery_selection_and_stream(monkeypatch):
 
 
 def test_cv2_camera_stream_reports_start_failure(monkeypatch):
-    fn = _NODE_REGISTRY["CV2CameraStream"]
+    fn = _NODE_REGISTRY["CameraStream"]
     monkeypatch.setattr(
         fn.__globals__["cv2_runtime"],
         "start_camera_stream",

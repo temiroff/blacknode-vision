@@ -273,14 +273,6 @@ def cv2_camera_discovery(ctx: dict) -> dict:
             "report": f"found {len(devices)} camera(s)" if devices else "no usable cameras found"}
 
 
-@node(name="CV2CameraDiscovery", category="Camera", hidden=True,
-      description="Compatibility alias for CameraDiscovery.",
-      inputs={"refresh": AnyPort, "backend": Enum(["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"], default="auto"),
-              "max_devices": Int(default=8)},
-      outputs={"found": Bool, "count": Int, "devices": List, "recommended": Dict, "discovery": Dict, "report": Text})
-def cv2_camera_discovery_compat(ctx: dict) -> dict:
-    return cv2_camera_discovery(ctx)
-
 
 @node(name="CameraSelect", category="Camera", hidden=True,
       description="Select one discovered camera by stable hardware index and emit its descriptor.",
@@ -305,13 +297,6 @@ def cv2_camera_select(ctx: dict) -> dict:
             "backend": str(camera.get("backend") or "auto"), "label": str(camera.get("label") or f"Camera {selection}"),
             "report": f"selected {camera.get('label') or camera.get('device')}"}
 
-
-@node(name="CV2CameraSelect", category="Camera", hidden=True,
-      description="Compatibility alias for CameraSelect.",
-      inputs={"trigger": AnyPort, "discovery": Dict(default={}), "selection": Int(default=0)},
-      outputs={"selected": Bool, "camera": Dict, "device": Text, "backend": Text, "label": Text, "report": Text})
-def cv2_camera_select_compat(ctx: dict) -> dict:
-    return cv2_camera_select(ctx)
 
 
 def _missing_cv2_outputs() -> dict[str, Any]:
@@ -933,12 +918,6 @@ _CAMERA_STREAM_OUTPUTS = {
     "report": Text,
 }
 
-
-@node(name="CV2CameraStream", live=True, category="Camera", hidden=True,
-      description="Compatibility alias for CameraStream.",
-      inputs=_CAMERA_STREAM_INPUTS, outputs=_CAMERA_STREAM_OUTPUTS)
-def cv2_camera_stream_compat(ctx: dict) -> dict:
-    return cv2_camera_stream(ctx)
 
 
 @node(
