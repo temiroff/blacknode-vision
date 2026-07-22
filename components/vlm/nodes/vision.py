@@ -702,7 +702,6 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
         "title": Text(default="Live Reasoning"),
     },
     outputs={
-        "frame_stream": Dict,
         "dashboard": Image,
         "streaming": Bool,
         "stream_url": Text,
@@ -710,6 +709,7 @@ def vision_reasoning_dashboard(ctx: dict) -> dict:
         "state_url": Text,
         "stream_id": Text,
         "report": Text,
+        "frame_stream": Dict,
     },
 )
 def vision_reasoning_stream(ctx: dict) -> dict:

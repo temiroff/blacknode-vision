@@ -419,7 +419,6 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
         "jpeg_quality": Int(default=82),
     },
     outputs={
-        "frame_stream": Dict,
         "preview": Image,
         "snapshot": Image,
         "mask": Image,
@@ -435,6 +434,7 @@ def cv2_color_object_tracker(ctx: dict) -> dict:
         "detection": Dict,
         "detections": List,
         "report": Text,
+        "frame_stream": Dict,
     },
 )
 def cv2_color_object_stream(ctx: dict) -> dict:

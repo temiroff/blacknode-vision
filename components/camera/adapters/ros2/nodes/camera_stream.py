@@ -78,13 +78,13 @@ def _resolve_image_message_type(topic: str, requested: str) -> tuple[str, str]:
         "jpeg_quality": Int(default=80),
     },
     outputs={
-        "frame_stream": Dict,
         "preview": Image,
         "streaming": Bool,
         "stream_url": Text,
         "snapshot_url": Text,
         "stream_id": Text,
         "report": Text,
+        "frame_stream": Dict,
     },
 )
 def ros2_image_stream(ctx: dict) -> dict:
@@ -208,13 +208,13 @@ def ros2_image_stream(ctx: dict) -> dict:
         "wait_seconds": Float(default=25.0),
     },
     outputs={
-        "frame_stream": Dict,
         "preview": Image,
         "streaming": Bool,
         "topic": Text,
         "camera": Text,
         "stream_url": Text,
         "report": Text,
+        "frame_stream": Dict,
     },
 )
 def ros2_usb_camera(ctx: dict) -> dict:
@@ -360,8 +360,7 @@ def _web_video_url(host: str, port: int, topic: str, quality: int, width: int, h
         "height": Int(default=0),
         "timeout": Float(default=10.0),
     },
-    outputs={
-        "frame_stream": Dict,"preview": Image, "streaming": Bool, "stream_url": Text, "report": Text},
+    outputs={"preview": Image, "streaming": Bool, "stream_url": Text, "report": Text, "frame_stream": Dict,},
 )
 def ros2_web_video_stream(ctx: dict) -> dict:
     host = str(ctx.get("host") or "").strip()
