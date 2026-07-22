@@ -7,11 +7,17 @@ workflow editor: run USB cameras,
 stream ROS 2 images, inspect VLM reasoning, track objects with OpenCV, and
 drive it all from workflows or AI agents over MCP.
 
-It composes with `blacknode-ros2`: ROS 2 handles camera transport, topic
-inspection, snapshots, and streams, while `blacknode-perception` adds
-vision-specific workflow pieces: a bundled generic USB camera ROS 2 node,
-camera consoles, frame prompts, stream dashboards, OpenCV tracking, and
-optional VLM/LLM inspection.
+It composes with `blacknode-ros2`: that package provides the ROS 2 graph,
+topics, processes, and transports, while `blacknode-perception` owns the
+camera capability itself — direct local cameras, OpenCV tracking, frame
+prompts, dashboards, optional VLM/LLM inspection, and the **`camera/ros2`
+adapter** that puts the camera capability on a ROS 2 graph
+(`ROS2ImageStream`, `ROS2USBCamera`, `ROS2WebVideoStream`, plus the bundled
+`perception_camera` colcon package under `components/camera/adapters/ros2/ros2_ws/`).
+
+The adapter declares a versioned dependency on `blacknode-ros2/core`;
+dependencies point that way only, so a future non-ROS transport can be added
+as a sibling adapter without touching the camera capability.
 
 ## Install
 
@@ -51,7 +57,7 @@ Restart Blacknode, or press **Reload** in the editor's Packages tab.
 
 | Package | Executable | What it does |
 |---|---|---|
-| `blacknode_usb_camera` | `usb_camera` | Publishes a local USB camera to `/camera/image_raw` |
+| `perception_camera` | `usb_camera` | Publishes a local USB camera to `/camera/image_raw` |
 
 The USB camera node accepts ROS parameters:
 

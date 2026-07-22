@@ -12,7 +12,7 @@ from sensor_msgs.msg import Image
 
 class UsbCamera(Node):
     def __init__(self) -> None:
-        super().__init__("blacknode_usb_camera")
+        super().__init__("perception_camera")
         self.declare_parameter("device", 0)
         self.declare_parameter("image_topic", "/camera/image_raw")
         self.declare_parameter("frame_id", "camera")

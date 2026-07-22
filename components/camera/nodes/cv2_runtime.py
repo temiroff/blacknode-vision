@@ -308,7 +308,13 @@ def start_camera_stream(
         proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-    base_url = f"http://{host}:{selected_port}"
+    # `host` is the address the helper BINDS to; 0.0.0.0 means "all interfaces"
+    # and is not a connectable address (on Windows it fails outright). Probing
+    # and advertising must use a reachable address, otherwise a perfectly
+    # healthy camera is reported as "did not produce a frame" and the published
+    # stream_url is unusable by the browser.
+    public_host = "127.0.0.1" if host in {"", "0.0.0.0", "::"} else host
+    base_url = f"http://{public_host}:{selected_port}"
     health_url = f"{base_url}/health.json"
     deadline = time.monotonic() + 8.0
     health: dict[str, Any] = {}

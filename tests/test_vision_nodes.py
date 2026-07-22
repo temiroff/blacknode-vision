@@ -23,10 +23,10 @@ EXPECTED_NODES = {
     "CV2CameraDiscovery": "Camera",
     "CV2CameraSelect": "Camera",
     "CV2CameraStream": "Camera",
-    "CV2ColorObjectStream": "CV2",
-    "CV2ColorTargetHint": "CV2",
-    "CV2ColorObjectTracker": "CV2",
-    "CV2HSVMask": "CV2",
+    "CV2ColorObjectStream": "Tracking",
+    "CV2ColorTargetHint": "Tracking",
+    "CV2ColorObjectTracker": "Tracking",
+    "CV2HSVMask": "Tracking",
     "CameraDashboard": "Perception",
     "DetectionPrompt": "Perception",
     "FramePrompt": "Perception",
@@ -391,7 +391,7 @@ def test_camera_dashboard_ready():
 
 def test_camera_dashboard_wraps_long_text():
     long_report = (
-        "ROS 2 run process running: blacknode_usb_camera usb_camera; "
+        "ROS 2 run process running: perception_camera usb_camera; "
         "/camera/image_raw is discoverable via native backend with a long status message"
     )
     result = _NODE_REGISTRY["CameraDashboard"]({

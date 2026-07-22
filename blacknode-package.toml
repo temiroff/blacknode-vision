@@ -1,6 +1,6 @@
 [package]
 name = "blacknode-perception"
-version = "0.2.0"
+version = "0.3.0"
 description = "Camera, tracking, VLM, and spatial-perception capabilities organized as selectable components."
 requires-blacknode = ">=0.3.0"
 layer = "perception"
@@ -8,7 +8,8 @@ component-mode = true
 
 [categories]
 "Perception" = "#18a058"
-"CV2" = "#2563eb"
+"Tracking" = "#2563eb"
+"Camera" = "#18a058"
 
 [components.camera]
 description = "Camera discovery, calibration, managed streams, and deterministic OpenCV tracking."
@@ -25,6 +26,19 @@ node-types = [
 [components.camera.dependencies]
 pip = ["opencv-python>=4.8", "numpy>=1.24"]
 imports = ["cv2", "numpy"]
+
+[components.camera.adapters.ros2]
+description = "Camera capability over ROS 2: image-topic streams, plug-and-play USB camera publishing, and robot web_video_server viewing."
+default = true
+capabilities = ["adapter.perception.camera.ros2"]
+nodes = ["components/camera/adapters/ros2/nodes"]
+templates = ["components/camera/adapters/ros2/templates"]
+# Colcon sources the adapter ships; build before ROS 2 nodes can run them.
+ros2-workspaces = ["components/camera/adapters/ros2/ros2_ws"]
+node-types = ["ROS2ImageStream", "ROS2USBCamera", "ROS2WebVideoStream"]
+
+[components.camera.adapters.ros2.dependencies]
+requires = [{ package = "blacknode-ros2", component = "core", version = ">=0.4.0,<1.0.0" }]
 
 [components.vlm]
 description = "Frame prompting, VLM description, reasoning streams, and visual dashboards."

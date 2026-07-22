@@ -2,7 +2,7 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = "blacknode_usb_camera"
+package_name = "perception_camera"
 
 setup(
     name=package_name,
@@ -21,7 +21,7 @@ setup(
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
-            "usb_camera = blacknode_usb_camera.usb_camera:main",
+            "usb_camera = perception_camera.usb_camera:main",
         ],
     },
 )

@@ -1,0 +1,112 @@
+{
+  "kind": "blacknode.workflow",
+  "schema_version": 1,
+  "name": "USB Camera on ROS 2",
+  "saved_at": "2026-07-21T00:00:00",
+  "entrypoint": {
+    "node_id": "image_out",
+    "port": "image"
+  },
+  "metadata": {
+    "template": true,
+    "description": "Plug in a USB camera, press Go Live, see it. Nothing to set up and nothing to fill in. The camera node opens your USB camera, publishes it to ROS 2 as a real sensor_msgs/Image topic, and shows the picture read back from that ROS topic — so what you see is proof ROS really has the camera. The topics output lists what is now live on the ROS graph. Got more than one camera? Change camera.selection to 1, 2, 3... Press Run instead of Go Live for a single frame.",
+    "color": "#2e9fe6",
+    "required_packages": ["blacknode-ros2", "blacknode-perception"]
+  },
+  "node_meta": {
+    "camera": {
+      "id": "camera",
+      "type": "ROS2USBCamera",
+      "params": {
+        "action": "start",
+        "selection": 0,
+        "topic": "/camera/image_raw",
+        "max_fps": 15.0,
+        "max_width": 640,
+        "jpeg_quality": 80,
+        "wait_seconds": 25.0
+      },
+      "pos": [120, 220],
+      "inputs": ["trigger", "action", "selection", "topic", "max_fps", "max_width", "jpeg_quality", "wait_seconds"],
+      "outputs": ["preview", "streaming", "topic", "camera", "stream_url", "report"],
+      "input_types": {
+        "trigger": "Any",
+        "action": "Text",
+        "selection": "Int",
+        "topic": "Text",
+        "max_fps": "Float",
+        "max_width": "Int",
+        "jpeg_quality": "Int",
+        "wait_seconds": "Float"
+      },
+      "output_types": {
+        "preview": "Image",
+        "streaming": "Bool",
+        "topic": "Text",
+        "camera": "Text",
+        "stream_url": "Text",
+        "report": "Text"
+      },
+      "input_defaults": {
+        "action": "start",
+        "selection": 0,
+        "topic": "/camera/image_raw",
+        "max_fps": 15.0,
+        "max_width": 640,
+        "jpeg_quality": 80,
+        "wait_seconds": 25.0
+      },
+      "input_choices": {"action": ["start", "stop"]}
+    },
+    "topics": {
+      "id": "topics",
+      "type": "ROS2TopicList",
+      "params": {"show_types": true},
+      "pos": [560, 460],
+      "inputs": ["trigger", "show_types"],
+      "outputs": ["topics", "report"],
+      "input_types": {"trigger": "Any", "show_types": "Bool"},
+      "output_types": {"topics": "List", "report": "Text"},
+      "input_defaults": {"show_types": true}
+    },
+    "image_out": {
+      "id": "image_out",
+      "type": "OutputImage",
+      "params": {},
+      "pos": [620, 180],
+      "inputs": ["image"],
+      "outputs": ["image"],
+      "input_types": {"image": "Image"},
+      "output_types": {"image": "Image"},
+      "input_defaults": {}
+    },
+    "topics_out": {
+      "id": "topics_out",
+      "type": "Output",
+      "params": {"label": "live ROS 2 topics (your camera is in here)"},
+      "pos": [1000, 460],
+      "inputs": ["value"],
+      "outputs": [],
+      "input_types": {"value": "Any"},
+      "output_types": {},
+      "input_defaults": {}
+    },
+    "status_out": {
+      "id": "status_out",
+      "type": "Output",
+      "params": {"label": "camera status (read this if no picture appears)"},
+      "pos": [1000, 660],
+      "inputs": ["value"],
+      "outputs": [],
+      "input_types": {"value": "Any"},
+      "output_types": {},
+      "input_defaults": {}
+    }
+  },
+  "edges": [
+    {"from": "camera", "from_port": "preview", "to": "image_out", "to_port": "image"},
+    {"from": "camera", "from_port": "report", "to": "topics", "to_port": "trigger"},
+    {"from": "camera", "from_port": "report", "to": "status_out", "to_port": "value"},
+    {"from": "topics", "from_port": "topics", "to": "topics_out", "to_port": "value"}
+  ]
+}

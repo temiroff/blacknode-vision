@@ -429,8 +429,8 @@ def _bool_value(value: Any, default: bool = False) -> bool:
 
 
 @node(
-    name="CV2ColorTargetHint",
-    category=_CATEGORY,
+    name="CV2ColorTargetHint", component="tracking",
+    category="Tracking",
     description="Resolve target or reasoning text such as 'track the red cube' into HSV settings for CV2 tracking.",
     inputs={
         "target": Text(default="track green cube"),
@@ -660,8 +660,8 @@ def _draw_detections(image_bgr: Any, detections: list[dict[str, Any]], *, label:
 
 
 @node(
-    name="CV2HSVMask",
-    category=_CATEGORY,
+    name="CV2HSVMask", component="tracking",
+    category="Tracking",
     description="Create an HSV color mask from a Blacknode image using OpenCV.",
     inputs={
         "image": Image(default=""),
@@ -711,8 +711,8 @@ def cv2_hsv_mask(ctx: dict) -> dict:
 
 
 @node(
-    name="CV2ColorObjectTracker",
-    category=_CATEGORY,
+    name="CV2ColorObjectTracker", component="tracking",
+    category="Tracking",
     description="Track the largest object in an HSV color range and draw an overlay.",
     inputs={
         "image": Image(default=""),
@@ -1031,9 +1031,9 @@ def camera(ctx: dict) -> dict:
 
 
 @node(
-    name="CV2ColorObjectStream",
+    name="CV2ColorObjectStream", component="tracking",
     live=True,
-    category=_CATEGORY,
+    category="Tracking",
     description="Start or stop a live MJPEG stream with OpenCV color tracking overlay and detection JSON.",
     inputs={
         "trigger": AnyPort,

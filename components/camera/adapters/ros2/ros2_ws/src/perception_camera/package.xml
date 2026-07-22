@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>blacknode_usb_camera</name>
+  <name>perception_camera</name>
   <version>0.1.0</version>
   <description>Generic USB camera publisher for Blacknode Vision workflows.</description>
   <maintainer email="temiroff@gmail.com">Blacknode</maintainer>

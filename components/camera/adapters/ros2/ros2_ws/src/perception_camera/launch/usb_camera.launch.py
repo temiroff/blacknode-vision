@@ -5,9 +5,9 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package="blacknode_usb_camera",
+            package="perception_camera",
             executable="usb_camera",
-            name="blacknode_usb_camera",
+            name="perception_camera",
             output="screen",
             parameters=[{
                 "device": 0,
