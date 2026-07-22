@@ -18,7 +18,7 @@ capabilities = ["perception.camera", "perception.calibration", "perception.track
 nodes = ["components/camera/nodes"]
 module-root = true
 node-types = [
-  "Camera", "CameraCalibration", "CameraDiscovery", "CameraSelect", "CameraStream",
+  "Camera", "CameraCalibration", "CameraDiscovery", "CameraSelect", "CameraStream"
 ]
 
 [components.camera.dependencies]
@@ -33,7 +33,9 @@ nodes = ["components/camera/adapters/ros2/nodes"]
 templates = ["components/camera/adapters/ros2/templates"]
 # Colcon sources the adapter ships; build before ROS 2 nodes can run them.
 ros2-workspaces = ["components/camera/adapters/ros2/ros2_ws"]
-node-types = ["ROS2ImageStream", "ROS2USBCamera", "ROS2WebVideoStream"]
+node-types = [
+  "ROS2ImageStream", "ROS2USBCamera", "ROS2WebVideoStream"
+]
 
 [components.camera.adapters.ros2.dependencies]
 requires = [{ package = "blacknode-ros2", component = "core", version = ">=0.4.0,<1.0.0" }]
@@ -44,8 +46,8 @@ default = true
 capabilities = ["perception.vlm", "perception.reasoning"]
 nodes = ["components/vlm/nodes"]
 node-types = [
-  "DetectionPrompt", "FramePrompt", "ReasoningDashboard",
-  "ReasoningStream", "CameraDashboard", "VLM",
+  "CameraDashboard", "DetectionPrompt", "FramePrompt", "ReasoningDashboard",
+  "ReasoningStream", "VLM"
 ]
 
 [components.vlm.dependencies]
@@ -77,7 +79,7 @@ default = true
 capabilities = ["perception.tracking", "perception.tracking.color"]
 nodes = ["components/tracking/nodes"]
 node-types = [
-  "CV2ColorObjectStream", "CV2ColorObjectTracker", "CV2ColorTargetHint", "CV2HSVMask",
+  "CV2ColorObjectStream", "CV2ColorObjectTracker", "CV2ColorTargetHint", "CV2HSVMask"
 ]
 
 [components.tracking.dependencies]
