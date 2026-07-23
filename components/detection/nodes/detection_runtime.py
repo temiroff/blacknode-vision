@@ -42,6 +42,8 @@ def start_detection_stream(
     stream_id: str,
     source_url: str,
     mode: str,
+    model: str = "yolov8n.pt",
+    conf: float = 0.35,
     node_id: str = "",
     host: str = "127.0.0.1",
     port: int = 0,
@@ -63,7 +65,9 @@ def start_detection_stream(
     args = [
         sys.executable, str(script),
         "--source-url", source_url,
-        "--mode", str(mode or "face"),
+        "--mode", str(mode or "motion"),
+        "--model", str(model or "yolov8n.pt"),
+        "--conf", str(conf),
         "--host", host,
         "--port", str(selected_port),
         "--max-fps", str(max_fps),
@@ -88,7 +92,7 @@ def start_detection_stream(
 
     base = f"http://{host}:{selected_port}"
     item = {
-        "proc": proc, "node_id": node_id, "mode": str(mode or "face"),
+        "proc": proc, "node_id": node_id, "mode": str(mode or "motion"),
         "stream_url": f"{base}/stream.mjpg",
         "snapshot_url": f"{base}/snapshot.jpg",
         "detection_url": f"{base}/detection.json",

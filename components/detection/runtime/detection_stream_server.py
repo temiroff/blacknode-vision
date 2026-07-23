@@ -97,8 +97,42 @@ class _ContourDetector:
         return _boxes_from_mask(mask, "object", 1500)
 
 
-def _make_detector(mode: str):
-    return _ContourDetector() if str(mode).lower() == "object" else _MotionDetector()
+class _YoloDetector:
+    """Real object detection via ultralytics YOLO — the same API the ROSOrin
+    robot uses. ultralytics is a heavy optional dependency (pulls torch), so the
+    import is deferred here and its absence is reported, not crashed on."""
+
+    def __init__(self, model: str, conf: float) -> None:
+        from ultralytics import YOLO  # optional heavy dep; guarded by the caller
+
+        self.label = "yolo"
+        self._conf = conf
+        self._model = YOLO(model)
+        self._names = self._model.names
+
+    def detect(self, frame: Any) -> list[dict[str, Any]]:
+        results = self._model(frame, conf=self._conf, verbose=False)
+        out: list[dict[str, Any]] = []
+        for result in results:
+            for box in getattr(result, "boxes", []) or []:
+                x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
+                cls = int(box.cls[0])
+                name = self._names.get(cls, str(cls)) if isinstance(self._names, dict) else str(cls)
+                out.append({"label": name, "confidence": round(float(box.conf[0]), 3),
+                            "x": x1, "y": y1, "w": x2 - x1, "h": y2 - y1,
+                            "area": (x2 - x1) * (y2 - y1),
+                            "center_x": (x1 + x2) // 2, "center_y": (y1 + y2) // 2})
+        out.sort(key=lambda d: d["confidence"], reverse=True)
+        return out
+
+
+def _make_detector(mode: str, model: str, conf: float):
+    mode = str(mode).lower()
+    if mode == "yolo":
+        return _YoloDetector(model, conf)
+    if mode == "object":
+        return _ContourDetector()
+    return _MotionDetector()
 
 
 def _annotate(frame: Any, detections: list[dict[str, Any]], mode: str) -> Any:
@@ -106,7 +140,9 @@ def _annotate(frame: Any, detections: list[dict[str, Any]], mode: str) -> Any:
     for det in detections:
         x, y, w, h = det["x"], det["y"], det["w"], det["h"]
         cv2.rectangle(overlay, (x, y), (x + w, y + h), _BOX_COLOR, 2)
-        cv2.putText(overlay, det["label"], (x, max(14, y - 6)),
+        conf = det.get("confidence")
+        caption = f"{det['label']} {conf:.2f}" if isinstance(conf, (int, float)) else det["label"]
+        cv2.putText(overlay, caption, (x, max(14, y - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, _TEXT_COLOR, 1, cv2.LINE_AA)
     cv2.putText(overlay, f"{mode}: {len(detections)}", (10, 22),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, _BOX_COLOR, 2, cv2.LINE_AA)
@@ -114,7 +150,22 @@ def _annotate(frame: Any, detections: list[dict[str, Any]], mode: str) -> Any:
 
 
 def _capture_loop(args: argparse.Namespace, state: SharedState) -> None:
-    detector = _make_detector(args.mode)
+    try:
+        detector = _make_detector(args.mode, args.model, args.conf)
+    except ImportError:
+        # YOLO needs ultralytics; say so instead of dying silently in a thread.
+        state.update(b"", {
+            "ok": False, "found": False, "detections": [],
+            "report": "YOLO detection needs ultralytics: pip install ultralytics",
+            "updated_at": time.time(),
+        })
+        return
+    except Exception as exc:  # noqa: BLE001 - surface any model-load failure
+        state.update(b"", {
+            "ok": False, "found": False, "detections": [],
+            "report": f"detector failed to start: {exc}", "updated_at": time.time(),
+        })
+        return
     quality = max(1, min(100, int(args.jpeg_quality)))
     interval = 1.0 / max(0.1, float(args.max_fps))
     while not state.stop.is_set():
@@ -192,7 +243,9 @@ def _make_handler(state: SharedState):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-url", required=True)
-    parser.add_argument("--mode", default="face")
+    parser.add_argument("--mode", default="motion")
+    parser.add_argument("--model", default="yolov8n.pt")
+    parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--max-fps", type=float, default=10.0)
