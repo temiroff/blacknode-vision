@@ -82,10 +82,9 @@ rotation:=0
 | `VLM` | Sends one image frame or text-only detection prompt to OpenAI-compatible, NVIDIA NIM, Anthropic, or local Ollama chat |
 | `ReasoningDashboard` | Shows the captured frame with the VLM's visible observations, evidence, uncertainty, and next action |
 | `ReasoningStream` | Starts a live MJPEG dashboard that periodically describes a camera image with local Ollama or NVIDIA NIM |
-| `CV2HSVMask` | Creates an HSV color mask from a Blacknode image |
-| `CV2ColorTargetHint` | Converts target/reasoning text like `track red cube` into label and HSV settings for CV2 tracking |
-| `CV2ColorObjectTracker` | Tracks colored objects such as cubes and returns overlay, mask, center, area, and detections |
-| `CV2ColorObjectStream` | Starts live MJPEG overlay and mask streams from a camera snapshot URL and exposes current snapshot and detection JSON |
+| `TrackingObject` | Live object tracking on a wired camera stream: draws boxes around the tracked colour object and serves annotated MJPEG plus detection JSON. Wire a Camera's `frame_stream` in |
+| `TrackingColorMask` | (hidden helper) Creates an HSV color mask from a Blacknode image |
+| `TrackingColorHint` | (hidden helper) Converts target/reasoning text like `track red cube` into label and HSV settings for tracking |
 
 ## Camera calibration
 
@@ -197,7 +196,7 @@ directly to CV2:
 ```text
 Text target prompt
   -> ReasoningStream
-  -> CV2ColorObjectStream.reasoning_state_url
+  -> TrackingObject.reasoning_state_url
 ```
 
 When `use_reasoning_color` is enabled, the model answer can choose the target
@@ -210,25 +209,24 @@ line describing the surroundings often mentions other colors in frame (e.g.
 "green and red cubes" when only the green one is the target), so the color
 picker specifically looks after `Target:` first before falling back to
 scanning the whole answer.
-Most `CV2ColorObjectStream` properties are hot updated from the editor:
+Most `TrackingObject` properties are hot updated from the editor:
 changing `object_color`, `use_reasoning_color`, `target`, `min_area`, `blur`,
 `morphology_iters`, FPS, width, or JPEG quality updates the running overlay,
 mask, and detection JSON without restarting the MJPEG URLs. For non-VLM
-workflows, `CV2ColorTargetHint.target` or `CV2ColorObjectStream.target` can
+workflows, `TrackingColorHint.target` or `TrackingObject.target` can
 still accept direct text such as `track red cube`.
 
 The CV2 tracker is still a fast color-threshold tracker, so it does not detect
 every cube automatically by shape. The VLM/reasoning side chooses what color to
 track, then CV2 does the live low-latency tracking.
 
-`CV2ColorObjectStream` keeps overlay and mask previews live and exposes the
+`TrackingObject` keeps overlay and mask previews live and exposes the
 latest mask stream at `/mask.mjpg`, mask snapshot at `/mask.png`, frame
 snapshot at `/snapshot.jpg`, and detection at `/detection.json`;
 it also returns a `detection_stream` handle for persistent controller nodes,
-so new detections do not require graph re-cooks.
-`CV2ColorObjectTracker` is still useful for single-frame tests. Both return
-structured detections, so the same prototype can drive a local LLM, robot
-control node, dashboard, or graph export.
+so new detections do not require graph re-cooks. It returns structured
+detections, so the same prototype can drive a local LLM, robot control node,
+dashboard, or graph export.
 
 ## Export
 

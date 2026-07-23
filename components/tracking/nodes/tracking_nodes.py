@@ -81,65 +81,9 @@ def _prepare_mask(
     return mask
 
 
-def _find_detections(mask: Any, *, label: str, min_area: float, max_detections: int) -> list[dict[str, Any]]:
-    result = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = result[0] if len(result) == 2 else result[1]
-    image_h, image_w = mask.shape[:2]
-    detections: list[dict[str, Any]] = []
-    for contour in contours:
-        area = float(cv2.contourArea(contour))
-        if area < min_area:
-            continue
-        x, y, w, h = cv2.boundingRect(contour)
-        moments = cv2.moments(contour)
-        if moments.get("m00"):
-            cx = int(moments["m10"] / moments["m00"])
-            cy = int(moments["m01"] / moments["m00"])
-        else:
-            cx = int(x + w / 2)
-            cy = int(y + h / 2)
-        bbox_area = max(1, w * h)
-        detections.append(
-            {
-                "label": label,
-                "center": {"x": cx, "y": cy},
-                "bbox": {"x": int(x), "y": int(y), "width": int(w), "height": int(h)},
-                "area": area,
-                "area_ratio": area / max(1, image_w * image_h),
-                "bbox_fill": area / bbox_area,
-                "aspect_ratio": w / max(1, h),
-            }
-        )
-    detections.sort(key=lambda item: float(item["area"]), reverse=True)
-    return detections[: max(1, int(max_detections))]
-
-
-def _draw_detections(image_bgr: Any, detections: list[dict[str, Any]], *, label: str) -> Any:
-    overlay = image_bgr.copy()
-    for index, detection in enumerate(detections, start=1):
-        bbox = detection["bbox"]
-        center = detection["center"]
-        x, y, w, h = bbox["x"], bbox["y"], bbox["width"], bbox["height"]
-        cx, cy = center["x"], center["y"]
-        color = (22, 163, 74) if index == 1 else (37, 99, 235)
-        cv2.rectangle(overlay, (x, y), (x + w, y + h), color, 2)
-        cv2.drawMarker(overlay, (cx, cy), color, cv2.MARKER_CROSS, 18, 2)
-        caption = f"{label} {index}: ({cx},{cy}) area={int(detection['area'])}"
-        cv2.putText(
-            overlay,
-            caption,
-            (max(4, x), max(20, y - 8)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            color,
-            2,
-            cv2.LINE_AA,
-        )
-    return overlay
-
-
 @node(
-    name="CV2ColorTargetHint",
+    name="TrackingColorHint",
+    hidden=True,
     category="Tracking",
     description="Resolve target or reasoning text such as 'track the red cube' into HSV settings for CV2 tracking.",
     inputs={
@@ -236,7 +180,8 @@ def cv2_color_target_hint(ctx: dict) -> dict:
 
 
 @node(
-    name="CV2HSVMask",
+    name="TrackingColorMask",
+    hidden=True,
     category="Tracking",
     description="Create an HSV color mask from a Blacknode image using OpenCV.",
     inputs={
@@ -287,112 +232,11 @@ def cv2_hsv_mask(ctx: dict) -> dict:
 
 
 @node(
-    name="CV2ColorObjectTracker",
-    category="Tracking",
-    description="Track the largest object in an HSV color range and draw an overlay.",
-    inputs={
-        "image": Image(default=""),
-        "label": Text(default="cube"),
-        "lower_hsv": Text(default="35,60,60"),
-        "upper_hsv": Text(default="85,255,255"),
-        "min_area": Int(default=300),
-        "max_detections": Int(default=3),
-        "blur": Int(default=5),
-        "morphology_iters": Int(default=1),
-    },
-    outputs={
-        "overlay": Image,
-        "mask": Image,
-        "found": Bool,
-        "center_x": Int,
-        "center_y": Int,
-        "area": Float,
-        "detection": Dict,
-        "detections": List,
-        "report": Text,
-    },
-)
-def cv2_color_object_tracker(ctx: dict) -> dict:
-    if cv2 is None or np is None:
-        missing = _missing_cv2_outputs()
-        return {
-            "overlay": "",
-            "mask": "",
-            "found": False,
-            "center_x": 0,
-            "center_y": 0,
-            "area": 0.0,
-            "detection": {},
-            "detections": [],
-            "report": missing["report"],
-        }
-
-    image, error = _decode_image_bgr(ctx.get("image"))
-    if error:
-        return {
-            "overlay": "",
-            "mask": "",
-            "found": False,
-            "center_x": 0,
-            "center_y": 0,
-            "area": 0.0,
-            "detection": {},
-            "detections": [],
-            "report": error,
-        }
-
-    label = str(ctx.get("label") or "object").strip() or "object"
-    lower = _parse_hsv(ctx.get("lower_hsv"), (35, 60, 60))
-    upper = _parse_hsv(ctx.get("upper_hsv"), (85, 255, 255))
-    min_area = max(0.0, float(ctx.get("min_area") or 0))
-    mask = _prepare_mask(
-        image,
-        lower,
-        upper,
-        blur=int(ctx.get("blur") or 0),
-        morphology_iters=int(ctx.get("morphology_iters") or 0),
-    )
-    detections = _find_detections(
-        mask,
-        label=label,
-        min_area=min_area,
-        max_detections=int(ctx.get("max_detections") or 1),
-    )
-    overlay = _draw_detections(image, detections, label=label)
-    detection = detections[0] if detections else {}
-    center = detection.get("center") or {}
-    found = bool(detection)
-    report = (
-        f"CV2 tracker OK: found {len(detections)} {label} candidate(s); "
-        f"largest center=({center.get('x', 0)}, {center.get('y', 0)})"
-        if found
-        else f"CV2 tracker OK: no {label} found in HSV {lower}-{upper} above area {int(min_area)}"
-    )
-    return {
-        "overlay": _encode_bgr(overlay, image_format="jpeg"),
-        "mask": _encode_bgr(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), image_format="png"),
-        "found": found,
-        "center_x": int(center.get("x") or 0),
-        "center_y": int(center.get("y") or 0),
-        "area": float(detection.get("area") or 0.0),
-        "detection": {
-            **detection,
-            "found": found,
-            "lower_hsv": lower,
-            "upper_hsv": upper,
-        }
-        if found
-        else {"found": False, "label": label, "lower_hsv": lower, "upper_hsv": upper},
-        "detections": detections,
-        "report": report,
-    }
-
-
-@node(
-    name="CV2ColorObjectStream",
+    name="TrackingObject",
     live=True,
     category="Tracking",
-    description="Start or stop a live MJPEG stream with OpenCV color tracking overlay and detection JSON.",
+    primary_inputs=["frame_stream"],
+    description="Live object tracking on a wired camera stream: draws boxes around the tracked colour object and serves annotated MJPEG plus detection JSON. Wire a Camera's frame_stream in and press Go Live.",
     inputs={
         "trigger": AnyPort,
         "action": Enum(["start", "stop"], default="start"),
@@ -463,9 +307,22 @@ def cv2_color_object_stream(ctx: dict) -> dict:
     if cv2 is None or np is None:
         return {**empty, "report": _missing_cv2_outputs()["report"]}
 
-    source_url = bn_streams.source_url(ctx.get("frame_stream"), str(ctx.get("source_url") or ""))
+    # Track on a per-frame snapshot, not the continuous MJPEG: the stream server
+    # fetches the source with urlopen().read(), which blocks forever on a
+    # multipart /stream.mjpg (the "waiting for first frame" hang). Prefer the
+    # frame_stream's snapshot URL, or derive it from the stream URL.
+    frame_stream = ctx.get("frame_stream") if isinstance(ctx.get("frame_stream"), dict) else {}
+    stream_url = bn_streams.source_url(frame_stream, str(ctx.get("source_url") or ""))
+    source_url = str(frame_stream.get("snapshot_url") or "")
+    if not source_url and stream_url.endswith("/stream.mjpg"):
+        source_url = stream_url[: -len("/stream.mjpg")] + "/snapshot.jpg"
     if not source_url:
-        return {**empty, "report": "CV2 stream FAILED: connect source_url to a camera snapshot URL"}
+        source_url = stream_url
+    if not source_url:
+        return {**empty, "report": (
+            "TrackingObject FAILED: nothing wired to 'frame_stream'.\n"
+            "CHECK: connect a Camera node's frame_stream output and cook it first."
+        )}
 
     label = str(ctx.get("label") or "object").strip() or "object"
     object_color = (

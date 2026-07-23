@@ -102,12 +102,18 @@ class _YoloDetector:
     robot uses. ultralytics is a heavy optional dependency (pulls torch), so the
     import is deferred here and its absence is reported, not crashed on."""
 
-    def __init__(self, model: str, conf: float) -> None:
+    def __init__(self, model: str, conf: float, classes: list[str] | None = None) -> None:
         from ultralytics import YOLO  # optional heavy dep; guarded by the caller
 
         self.label = "yolo"
         self._conf = conf
         self._model = YOLO(model)
+        # YOLO-World is open-vocabulary: tell it exactly what to look for. Without
+        # this it keeps its default prompt set; with it, detections are limited to
+        # (and named by) the caller's list. set_classes is absent on plain COCO
+        # models, so a stray list on a non-world model is silently ignored.
+        if classes and hasattr(self._model, "set_classes"):
+            self._model.set_classes(classes)
         self._names = self._model.names
 
     def detect(self, frame: Any) -> list[dict[str, Any]]:
@@ -126,10 +132,16 @@ class _YoloDetector:
         return out
 
 
-def _make_detector(mode: str, model: str, conf: float):
+def _parse_classes(raw: str) -> list[str]:
+    """A comma-separated "classes" field -> a clean list. Empty means "use the
+    model's own labels" (COCO names, or YOLO-World's default vocabulary)."""
+    return [part.strip() for part in str(raw or "").split(",") if part.strip()]
+
+
+def _make_detector(mode: str, model: str, conf: float, classes: str = ""):
     mode = str(mode).lower()
     if mode == "yolo":
-        return _YoloDetector(model, conf)
+        return _YoloDetector(model, conf, _parse_classes(classes))
     if mode == "object":
         return _ContourDetector()
     return _MotionDetector()
@@ -151,7 +163,7 @@ def _annotate(frame: Any, detections: list[dict[str, Any]], mode: str) -> Any:
 
 def _capture_loop(args: argparse.Namespace, state: SharedState) -> None:
     try:
-        detector = _make_detector(args.mode, args.model, args.conf)
+        detector = _make_detector(args.mode, args.model, args.conf, args.classes)
     except ImportError:
         # YOLO needs ultralytics; say so instead of dying silently in a thread.
         state.update(b"", {
@@ -245,6 +257,7 @@ def main() -> None:
     parser.add_argument("--source-url", required=True)
     parser.add_argument("--mode", default="motion")
     parser.add_argument("--model", default="yolov8n.pt")
+    parser.add_argument("--classes", default="")
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)

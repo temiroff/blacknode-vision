@@ -87,7 +87,7 @@ default = true
 capabilities = ["perception.tracking", "perception.tracking.color"]
 nodes = ["components/tracking/nodes"]
 node-types = [
-  "CV2ColorObjectStream", "CV2ColorObjectTracker", "CV2ColorTargetHint", "CV2HSVMask"
+  "TrackingObject", "TrackingColorHint", "TrackingColorMask"
 ]
 
 [components.tracking.dependencies]

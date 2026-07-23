@@ -9,6 +9,8 @@ _TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
 _EXPECTED_ROBOTS = {
     "vision-camera-console.json": {},
     "vision-live-vlm-reasoning.json": {},
+    "camera-to-yolo-detection.json": {},
+    "camera-to-motion-detection.json": {},
 }
 
 

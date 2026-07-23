@@ -180,6 +180,11 @@ def _camera_candidates(max_devices: int) -> list[tuple[int | str, str]]:
                 labels = [line.strip() for line in result.stdout.splitlines() if line.strip()]
         except Exception:
             pass
+        # Only probe as many indices as Windows reports present cameras. Opening a
+        # non-existent index blocks for seconds on the media backend, so probing a
+        # fixed 8 when one webcam is attached is what makes discovery crawl.
+        if labels:
+            max_devices = min(max_devices, len(labels))
     return [(index, labels[index] if index < len(labels) else f"Camera {index}") for index in range(max_devices)]
 
 
@@ -205,6 +210,10 @@ def cv2_camera_discovery(ctx: dict) -> dict:
                 "report": _missing_cv2_outputs()["report"]}
     backend = str(ctx.get("backend") or "auto").lower()
     api = _probe_backend(backend)
+    if api is None and backend == "auto" and os.name == "nt":
+        # DirectShow enumerates and fails fast for absent indices; MSMF (the
+        # Windows default) can block for seconds per missing device.
+        api = getattr(cv2, "CAP_DSHOW", None)
     devices: list[dict[str, Any]] = []
     for hardware_index, (device, label) in enumerate(
         _camera_candidates(max(1, min(32, int(ctx.get("max_devices") or 8))))

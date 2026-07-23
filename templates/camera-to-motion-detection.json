@@ -1,0 +1,51 @@
+{
+  "kind": "blacknode.workflow",
+  "schema_version": 1,
+  "name": "Camera → Detection (no download)",
+  "saved_at": "2026-07-23T00:00:00",
+  "entrypoint": {
+    "node_id": "detect",
+    "port": "preview"
+  },
+  "metadata": {
+    "template": true,
+    "description": "Live webcam into the built-in OpenCV detector — boxes moving / high-contrast regions with zero model download. Works anywhere the camera does. Press Go Live.",
+    "color": "#f59e0b",
+    "required_packages": [
+      {
+        "name": "blacknode-perception",
+        "git_url": "https://github.com/temiroff/blacknode-perception.git",
+        "node_types": ["Camera", "DetectionStream"]
+      }
+    ]
+  },
+  "node_meta": {
+    "camera": {
+      "id": "camera",
+      "type": "Camera",
+      "params": {"action": "start", "selection": 0},
+      "pos": [200, 200],
+      "inputs": ["trigger", "action", "selection", "stream_id", "camera", "device", "backend", "max_devices", "width", "height", "host", "port", "max_fps", "max_width", "jpeg_quality"],
+      "outputs": ["found", "count", "devices", "camera", "label", "preview", "streaming", "stream_url", "snapshot_url", "health_url", "frame_stream", "stream_id", "report"],
+      "input_types": {"trigger": "Any", "action": "Text", "selection": "Int", "stream_id": "Text", "camera": "Dict", "device": "Text", "backend": "Text", "max_devices": "Int", "width": "Int", "height": "Int", "host": "Text", "port": "Int", "max_fps": "Float", "max_width": "Int", "jpeg_quality": "Int"},
+      "output_types": {"found": "Bool", "count": "Int", "devices": "List", "camera": "Dict", "label": "Text", "preview": "Image", "streaming": "Bool", "stream_url": "Text", "snapshot_url": "Text", "health_url": "Text", "frame_stream": "Dict", "stream_id": "Text", "report": "Text"},
+      "input_defaults": {"action": "start", "selection": 0, "stream_id": "", "camera": {}, "device": "", "backend": "auto", "max_devices": 8, "width": 640, "height": 480, "host": "127.0.0.1", "port": 0, "max_fps": 15.0, "max_width": 960, "jpeg_quality": 82},
+      "input_choices": {"action": ["start", "stop"], "backend": ["auto", "dshow", "msmf", "v4l2", "avfoundation", "any"]}
+    },
+    "detect": {
+      "id": "detect",
+      "type": "DetectionStream",
+      "params": {"action": "start", "mode": "object"},
+      "pos": [720, 200],
+      "inputs": ["trigger", "action", "frame_stream", "source_url", "mode", "stream_id", "max_fps", "max_width", "jpeg_quality"],
+      "outputs": ["preview", "streaming", "stream_url", "snapshot_url", "detection_stream", "detections", "found", "stream_id", "report", "frame_stream"],
+      "input_types": {"trigger": "Any", "action": "Text", "frame_stream": "Dict", "source_url": "Text", "mode": "Text", "stream_id": "Text", "max_fps": "Float", "max_width": "Int", "jpeg_quality": "Int"},
+      "output_types": {"preview": "Image", "streaming": "Bool", "stream_url": "Text", "snapshot_url": "Text", "detection_stream": "Dict", "detections": "List", "found": "Bool", "stream_id": "Text", "report": "Text", "frame_stream": "Dict"},
+      "input_defaults": {"action": "start", "frame_stream": {}, "source_url": "", "mode": "motion", "stream_id": "detection", "max_fps": 10.0, "max_width": 960, "jpeg_quality": 80},
+      "input_choices": {"action": ["start", "stop"], "mode": ["motion", "object"]}
+    }
+  },
+  "edges": [
+    {"from": "camera", "from_port": "frame_stream", "to": "detect", "to_port": "frame_stream"}
+  ]
+}

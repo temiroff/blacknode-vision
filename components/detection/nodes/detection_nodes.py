@@ -116,8 +116,10 @@ def detection_stream(ctx: dict) -> dict:
     category=_CATEGORY,
     description=(
         "Real object detection with YOLO (the same ultralytics engine the robot uses) on a "
-        "wired camera stream. Wire a Camera (or any frame_stream) into frame_stream. The model "
-        "auto-downloads on first use; runs on GPU when torch sees CUDA. Needs: pip install ultralytics."
+        "wired camera stream. Wire a Camera (or any frame_stream) into frame_stream. Pick a "
+        "built-in COCO model, a custom weight from .blacknode/models, or an open-vocabulary "
+        "YOLO-World model and type the classes to find. Auto-downloads on first use; runs on "
+        "GPU when torch sees CUDA. Needs: pip install ultralytics."
     ),
     primary_inputs=["frame_stream"],
     primary_outputs=["preview", "detection_stream", "report"],
@@ -127,6 +129,9 @@ def detection_stream(ctx: dict) -> dict:
         "frame_stream": Dict(default={}),
         "source_url": Text(default=""),
         "model": Text(default="yolov8n.pt"),
+        # Open-vocabulary target list for YOLO-World models, e.g. "cube, box, mug".
+        # Empty = use the model's own labels (COCO for standard/custom weights).
+        "classes": Text(default=""),
         "conf": Float(default=0.35),
         "stream_id": Text(default="yolo"),
         "max_fps": Float(default=10.0),
@@ -176,6 +181,7 @@ def detection_yolo(ctx: dict) -> dict:
         source_url=source_url,
         mode="yolo",
         model=model,
+        classes=str(ctx.get("classes") or "").strip(),
         conf=max(0.0, min(1.0, float(ctx.get("conf") or 0.35))),
         node_id=str(ctx.get("__node_id__") or ""),
         max_fps=max(0.1, min(30.0, float(ctx.get("max_fps") or 10.0))),

@@ -49,6 +49,7 @@ def start_detection_stream(
     source_url: str,
     mode: str,
     model: str = "yolov8n.pt",
+    classes: str = "",
     conf: float = 0.35,
     node_id: str = "",
     host: str = "127.0.0.1",
@@ -62,7 +63,7 @@ def start_detection_stream(
     # The detector is a startup argument (no live reconfigure), so switching mode
     # or model has to restart the process - reusing it silently ignored the
     # change, and left a stale server that read as frozen.
-    signature = (source_url, str(mode or "motion"), resolved_model, round(float(conf), 3))
+    signature = (source_url, str(mode or "motion"), resolved_model, str(classes or ""), round(float(conf), 3))
     existing = _STREAMS.get(stream_id)
     if (existing and existing.get("proc") is not None and existing["proc"].poll() is None
             and existing.get("signature") == signature):
@@ -80,6 +81,8 @@ def start_detection_stream(
         # Model resolved above against .blacknode/models so the detached server
         # (a different cwd) still finds a custom weight.
         "--model", resolved_model,
+        # Open-vocabulary target list for YOLO-World; ignored by COCO models.
+        "--classes", str(classes or ""),
         "--conf", str(conf),
         "--host", host,
         "--port", str(selected_port),

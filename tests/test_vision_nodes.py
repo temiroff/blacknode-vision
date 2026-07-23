@@ -20,10 +20,9 @@ EXPECTED_NODES = {
     "CameraDiscovery": "Camera",
     "CameraSelect": "Camera",
     "CameraStream": "Camera",
-    "CV2ColorObjectStream": "Tracking",
-    "CV2ColorTargetHint": "Tracking",
-    "CV2ColorObjectTracker": "Tracking",
-    "CV2HSVMask": "Tracking",
+    "TrackingObject": "Tracking",
+    "TrackingColorHint": "Tracking",
+    "TrackingColorMask": "Tracking",
     "CameraDashboard": "Perception",
     "DetectionPrompt": "Perception",
     "FramePrompt": "Perception",
@@ -94,7 +93,7 @@ def test_detection_prompt_summarizes_cv2_output():
 
 
 def test_cv2_color_target_hint_uses_explicit_target_color():
-    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+    result = _NODE_REGISTRY["TrackingColorHint"]({
         "target": "track the red cube",
         "reasoning": "A blue cube is also visible.",
         "fallback_color": "green",
@@ -108,7 +107,7 @@ def test_cv2_color_target_hint_uses_explicit_target_color():
 
 
 def test_cv2_color_target_hint_uses_reasoning_when_target_is_vague():
-    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+    result = _NODE_REGISTRY["TrackingColorHint"]({
         "target": "track the cube",
         "reasoning": "The most visible object is a blue cube near the center.",
         "fallback_color": "green",
@@ -122,7 +121,7 @@ def test_cv2_color_target_hint_uses_reasoning_when_target_is_vague():
 
 
 def test_cv2_color_target_hint_reads_reasoning_state_url(monkeypatch):
-    fn = _NODE_REGISTRY["CV2ColorTargetHint"]
+    fn = _NODE_REGISTRY["TrackingColorHint"]
 
     def fake_read_reasoning_state_answer(state_url, wait_seconds):
         assert state_url == "http://127.0.0.1:9200/state.json"
@@ -142,7 +141,7 @@ def test_cv2_color_target_hint_reads_reasoning_state_url(monkeypatch):
 
 
 def test_cv2_color_target_hint_falls_back_without_color():
-    result = _NODE_REGISTRY["CV2ColorTargetHint"]({
+    result = _NODE_REGISTRY["TrackingColorHint"]({
         "target": "track the cube",
         "reasoning": "A cube is visible, but the color is unclear.",
         "fallback_color": "purple",
@@ -588,36 +587,8 @@ def test_vlm_describe_anthropic_image(monkeypatch):
     assert source == {"type": "base64", "media_type": "image/png", "data": "abc"}
 
 
-def test_cv2_tracker_reports_missing_or_detects_green_cube():
-    fn = _NODE_REGISTRY["CV2ColorObjectTracker"]
-    if fn.__globals__["cv2"] is None:
-        result = fn({"image": "data:image/png;base64,abc"})
-        assert result["found"] is False
-        assert "OpenCV is not installed" in result["report"]
-        return
-
-    cv2 = fn.__globals__["cv2"]
-    np = fn.__globals__["np"]
-    image = np.zeros((120, 160, 3), dtype=np.uint8)
-    image[30:80, 60:110] = (0, 255, 0)
-    ok, encoded = cv2.imencode(".png", image)
-    assert ok
-    source = "data:image/png;base64," + base64.b64encode(encoded.tobytes()).decode("ascii")
-    result = fn({
-        "image": source,
-        "label": "cube",
-        "lower_hsv": "35,60,60",
-        "upper_hsv": "85,255,255",
-        "min_area": 100,
-    })
-    assert result["found"] is True
-    assert 75 <= result["center_x"] <= 95
-    assert 45 <= result["center_y"] <= 65
-    assert result["overlay"].startswith("data:image/jpeg;base64,")
-
-
 def test_cv2_color_object_stream_starts_runtime(monkeypatch):
-    fn = _NODE_REGISTRY["CV2ColorObjectStream"]
+    fn = _NODE_REGISTRY["TrackingObject"]
     if fn.__globals__["cv2"] is None:
         result = fn({"source_url": "http://127.0.0.1:9000/snapshot.jpg"})
         assert result["streaming"] is False
@@ -700,7 +671,7 @@ def test_cv2_follow_guide_reports_visible_direction():
 
 
 def test_cv2_color_object_stream_stops_runtime(monkeypatch):
-    fn = _NODE_REGISTRY["CV2ColorObjectStream"]
+    fn = _NODE_REGISTRY["TrackingObject"]
 
     def fake_stop_color_stream(stream_id):
         assert stream_id == "cube_tracker"
