@@ -74,7 +74,7 @@ description = "Live OpenCV object detection (face, motion) over a wired camera s
 default = true
 capabilities = ["perception.detection"]
 nodes = ["components/detection/nodes"]
-node-types = ["DetectionStream", "YoloDetection"]
+node-types = ["DetectionStream", "DetectionYolo"]
 
 [components.detection.dependencies]
 pip = ["opencv-python>=4.8", "numpy>=1.24"]

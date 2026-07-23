@@ -111,7 +111,7 @@ def detection_stream(ctx: dict) -> dict:
 
 
 @node(
-    name="YoloDetection",
+    name="DetectionYolo",
     live=True,
     category=_CATEGORY,
     description=(
@@ -146,7 +146,7 @@ def detection_stream(ctx: dict) -> dict:
         "frame_stream": Dict,
     },
 )
-def yolo_detection(ctx: dict) -> dict:
+def detection_yolo(ctx: dict) -> dict:
     stream_id = str(ctx.get("stream_id") or "yolo").strip() or "yolo"
     blank = {"preview": "", "streaming": False, "stream_url": "", "snapshot_url": "",
              "detection_stream": {}, "detections": [], "found": False, "stream_id": stream_id}

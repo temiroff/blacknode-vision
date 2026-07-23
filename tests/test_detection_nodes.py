@@ -47,14 +47,14 @@ def test_detection_explains_an_unwired_input(monkeypatch):
 
 
 def test_yolo_node_registered_and_wired(monkeypatch):
-    assert "YoloDetection" in _NODE_REGISTRY
+    assert "DetectionYolo" in _NODE_REGISTRY
     captured = {}
     monkeypatch.setattr(rt, "start_detection_stream",
                         lambda **k: captured.update(k) or {
                             "ok": True, "stream_url": "http://127.0.0.1:9/stream.mjpg",
                             "snapshot_url": "http://127.0.0.1:9/snapshot.jpg",
                             "detection_url": "http://127.0.0.1:9/detection.json"})
-    result = _NODE_REGISTRY["YoloDetection"]({
+    result = _NODE_REGISTRY["DetectionYolo"]({
         "action": "start", "model": "yolov8n.pt", "conf": 0.4,
         "frame_stream": {"snapshot_url": "http://127.0.0.1:5/snapshot.jpg",
                          "stream_url": "http://127.0.0.1:5/stream.mjpg"},
